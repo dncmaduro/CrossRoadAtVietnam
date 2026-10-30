@@ -41,7 +41,7 @@ function samplePath(config: PathVehicleConfig, progress: number, position: THREE
 export function PathVehicle({ config, getTraffic, onUpdate, playerState, intersectionRuntime }: PathVehicleProps) {
   const body = useRef<RapierRigidBody>(null)
   const visuals = useRef<THREE.Group>(null)
-  const wheelRefs = useRef<Array<THREE.Mesh | null>>([])
+  const wheelRefs = useRef<Array<THREE.Object3D | null>>([])
   const nextTranslation = useRef({ x: 0, y: 0, z: 0 })
   const nextRotation = useRef({ x: 0, y: 0, z: 0, w: 1 })
   const position = useRef(new THREE.Vector2())

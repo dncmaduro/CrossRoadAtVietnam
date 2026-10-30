@@ -113,11 +113,12 @@ const rushHourTraffic: TrafficProfile = {
   motorcycleReactionDistance: [1.05, 1.24],
 }
 
-function createPlayerBounds(roadHalfWidth: number, sidewalkWidth: number) {
+function createPlayerBounds(roadLength: number, roadHalfWidth: number, sidewalkWidth: number) {
   const sidewalkCenter = roadHalfWidth + sidewalkWidth / 2
+  const longitudinalLimit = Math.min(roadLength / 2 - 2, 26)
   return {
-    xMin: -14.8,
-    xMax: 14.8,
+    xMin: -longitudinalLimit,
+    xMax: longitudinalLimit,
     zMin: -(sidewalkCenter + 1.95),
     zMax: sidewalkCenter + 1.95,
   }
@@ -130,7 +131,7 @@ function createLevel(
   return {
     ...input,
     playerSpawn: [0, 1, -sidewalkCenter],
-    playerBounds: createPlayerBounds(input.roadHalfWidth, input.sidewalkWidth),
+    playerBounds: createPlayerBounds(input.roadLength, input.roadHalfWidth, input.sidewalkWidth),
     finishZone: { minZ: input.roadHalfWidth + 0.3, maxZ: sidewalkCenter + 1.95 },
   }
 }
@@ -141,7 +142,7 @@ export const LEVELS: LevelConfig[] = [
     name: 'NGÕ 2 LÀN',
     scenario: 'straight',
     environmentPreset: 'smallStreet',
-    roadLength: 32,
+    roadLength: 60,
     roadHalfWidth: 3,
     sidewalkWidth: 4.4,
     laneGroups: [
@@ -154,7 +155,7 @@ export const LEVELS: LevelConfig[] = [
     name: 'ĐƯỜNG 4 LÀN',
     scenario: 'straight',
     environmentPreset: 'urban',
-    roadLength: 32,
+    roadLength: 60,
     roadHalfWidth: 7,
     sidewalkWidth: 4.4,
     laneGroups: [
@@ -167,7 +168,7 @@ export const LEVELS: LevelConfig[] = [
     name: 'DẢI PHÂN CÁCH',
     scenario: 'straight',
     environmentPreset: 'median',
-    roadLength: 32,
+    roadLength: 60,
     roadHalfWidth: 6.5,
     sidewalkWidth: 4.4,
     median: { width: 1, refugeLength: 5, openingWidth: 4.8 },
@@ -181,7 +182,7 @@ export const LEVELS: LevelConfig[] = [
     name: 'DÒNG XE MÁY',
     scenario: 'straight',
     environmentPreset: 'motorcycle',
-    roadLength: 32,
+    roadLength: 60,
     roadHalfWidth: 7,
     sidewalkWidth: 4.4,
     laneGroups: [
@@ -194,7 +195,7 @@ export const LEVELS: LevelConfig[] = [
     name: 'ĐẠI LỘ 6 LÀN',
     scenario: 'straight',
     environmentPreset: 'arterial',
-    roadLength: 34,
+    roadLength: 64,
     roadHalfWidth: 10,
     sidewalkWidth: 4.6,
     median: { width: 1.1, refugeLength: 5.4, openingWidth: 5.2 },
@@ -208,7 +209,7 @@ export const LEVELS: LevelConfig[] = [
     name: 'NGÃ TƯ ĐÈN ĐỎ',
     scenario: 'signalizedIntersection',
     environmentPreset: 'intersection',
-    roadLength: 32,
+    roadLength: 60,
     roadHalfWidth: 7,
     sidewalkWidth: 4.4,
     laneGroups: [
@@ -228,7 +229,7 @@ export const LEVELS: LevelConfig[] = [
     name: 'XE RẼ',
     scenario: 'turningIntersection',
     environmentPreset: 'intersection',
-    roadLength: 32,
+    roadLength: 60,
     roadHalfWidth: 7,
     sidewalkWidth: 4.4,
     laneGroups: [
@@ -242,7 +243,7 @@ export const LEVELS: LevelConfig[] = [
     name: 'GIỜ CAO ĐIỂM',
     scenario: 'rushHour',
     environmentPreset: 'rushHour',
-    roadLength: 36,
+    roadLength: 68,
     roadHalfWidth: 10,
     sidewalkWidth: 4.6,
     median: { width: 1.1, refugeLength: 5.6, openingWidth: 5.2 },

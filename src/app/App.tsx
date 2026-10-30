@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useRef } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { gameAudio } from '../game/audio/AudioManager'
 import { LEVELS } from '../game/levels/level.config'
 import { useGameStore } from '../store/gameStore'
@@ -27,6 +27,7 @@ function App() {
   const setResultForDebug = useGameStore((state) => state.setResultForDebug)
   const levelIndex = useGameStore((state) => state.levelIndex)
   const pointerLockAvailable = canUsePointerLock()
+  const [pointerLocked, setPointerLocked] = useState(false)
   const handleCanvasReady = useCallback((element: HTMLCanvasElement) => {
     canvas.current = element
   }, [])
@@ -41,6 +42,17 @@ function App() {
     window.addEventListener('keydown', onDebugLevel)
     return () => window.removeEventListener('keydown', onDebugLevel)
   }, [setLevelForDebug, setResultForDebug])
+
+  useEffect(() => {
+    const onPointerLockChange = () => setPointerLocked(document.pointerLockElement === canvas.current)
+    const onPointerLockError = () => setPointerLocked(false)
+    document.addEventListener('pointerlockchange', onPointerLockChange)
+    document.addEventListener('pointerlockerror', onPointerLockError)
+    return () => {
+      document.removeEventListener('pointerlockchange', onPointerLockChange)
+      document.removeEventListener('pointerlockerror', onPointerLockError)
+    }
+  }, [])
 
   useEffect(() => {
     if (status !== 'playing' && document.pointerLockElement === canvas.current) document.exitPointerLock()
@@ -62,13 +74,17 @@ function App() {
     // Audio is created only from the start/restart gesture to satisfy browser autoplay policy.
     gameAudio.activate()
     gameAudio.beginRound()
-    action()
     // Embedded previews can expose the API without allowing the document to own pointer lock.
     // A normal standalone deployment is top-level and can lock the actual WebGL canvas from this gesture.
     if (pointerLockAvailable) {
-      const request = canvas.current?.requestPointerLock()
-      if (request) request.catch(() => undefined)
+      try {
+        const request = canvas.current?.requestPointerLock()
+        if (request) request.catch(() => undefined)
+      } catch {
+        // Pointer Lock failure must not prevent gameplay from starting.
+      }
     }
+    action()
   }
 
   return (
@@ -90,9 +106,13 @@ function App() {
         <ResultOverlay
           status={status}
           isFinalLevel={levelIndex === LEVELS.length - 1}
-          onContinue={status === 'won' ? advanceLevel : undefined}
+          onContinue={status === 'won' ? () => lockAndPlay(advanceLevel) : undefined}
           onRestart={() => lockAndPlay(restart)}
         />
+      )}
+
+      {status === 'playing' && (!pointerLockAvailable || !pointerLocked) && (
+        <p className="pointer-lock-hint pointer-lock-hint-game">Bấm vào game để điều khiển chuột</p>
       )}
 
       <div className="desktop-warning">Màn hình rộng được khuyến nghị.</div>

@@ -2,7 +2,7 @@ import { useMemo, useRef } from 'react'
 import { GameAudio } from '../audio/GameAudio'
 import type { LevelConfig } from '../levels/level.config'
 import type { IntersectionRuntime } from '../intersection/intersection.runtime'
-import { createPathVehicleConfigs, createVehicleConfigs } from './traffic.config'
+import { createPathVehicleConfigs, createVehicleConfigs, getTrafficBoundaryX } from './traffic.config'
 import type { PlayerTrafficState, TrafficSnapshot } from './traffic.types'
 import { PathVehicle } from './PathVehicle'
 import { Vehicle } from './Vehicle'
@@ -21,6 +21,7 @@ type TrafficManagerProps = {
 export function TrafficManager({ playerState, level, intersectionRuntime }: TrafficManagerProps) {
   const vehicles = useMemo(() => createVehicleConfigs(level), [level])
   const pathVehicles = useMemo(() => createPathVehicleConfigs(level), [level])
+  const trafficBoundaryX = getTrafficBoundaryX(level)
   const resetOffsets = useRef<number[]>([])
   const positions = useRef(
     new Map<number, TrafficSnapshot>(
@@ -83,7 +84,7 @@ export function TrafficManager({ playerState, level, intersectionRuntime }: Traf
     if (!config) return { x: 0, delay: 0.5 }
     const offset = (resetOffsets.current[id] ?? 0) + 1
     resetOffsets.current[id] = offset
-    const spawnX = config.direction === 1 ? -20.5 : 20.5
+    const spawnX = config.direction === 1 ? -trafficBoundaryX : trafficBoundaryX
     const laneVehicles = vehicles.filter((vehicle) => vehicle.laneIndex === config.laneIndex && vehicle.id !== id)
     const spawnBlocked = laneVehicles.some((vehicle) => {
       const position = positions.current.get(vehicle.id)
@@ -102,6 +103,7 @@ export function TrafficManager({ playerState, level, intersectionRuntime }: Traf
         <Vehicle
           key={config.id}
           config={config}
+          trafficBoundaryX={trafficBoundaryX}
           getTraffic={getTraffic}
           onReset={resetVehicle}
           onUpdate={updateVehiclePosition}

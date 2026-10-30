@@ -32,7 +32,7 @@ export const TRAFFIC_TUNING = {
   playerPredictionTime: 0.32,
   playerLongitudinalRange: 4.8,
   playerLateralRange: 1.2,
-  vehicleEndX: 18,
+  spawnBuffer: 8,
   car: {
     acceleration: 3.3,
     braking: 8.5,
@@ -55,6 +55,10 @@ export const TRAFFIC_TUNING = {
     steerSpeed: 0.18,
   },
 } as const
+
+export function getTrafficBoundaryX(level: LevelConfig) {
+  return level.roadLength / 2 + TRAFFIC_TUNING.spawnBuffer
+}
 
 export const CAR_COLORS = ['#e7e4dc', '#bcc3c3', '#2b3438', '#596771', '#a85d57', '#d8d3c7']
 export const MOTORCYCLE_COLORS = ['#c6c9c2', '#1c2730', '#c85d4c', '#2f6e73', '#735b7e', '#53635e']
@@ -97,6 +101,7 @@ function pickMotorcycleStyle(seed: number): MotorcycleStyle {
 
 export function createVehicleConfigs(level: LevelConfig): VehicleConfig[] {
   const configs: VehicleConfig[] = []
+  const trafficBoundaryX = getTrafficBoundaryX(level)
 
   getLaneConfigs(level).forEach((lane) => {
     const profile = lane.trafficProfile
@@ -123,7 +128,7 @@ export function createVehicleConfigs(level: LevelConfig): VehicleConfig[] {
         direction: lane.direction,
         width: dimensions.width,
         length: dimensions.length,
-        startX: directionOffset * (12 + vehicleIndex * profile.spawnGap + lane.index * 1.2),
+        startX: directionOffset * (trafficBoundaryX + vehicleIndex * profile.spawnGap + lane.index * 1.2),
         spawnDelay: vehicleIndex === 0 ? lane.index * 0.12 : 0.25 + vehicleIndex * 0.32 + lane.index * 0.08,
         reactionDistance: sampleRange(
           motorcycle ? profile.motorcycleReactionDistance : profile.carReactionDistance,

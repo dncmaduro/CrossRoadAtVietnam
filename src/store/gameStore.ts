@@ -28,7 +28,7 @@ export const useGameStore = create<GameState>((set) => ({
   })),
   advanceLevel: () => set((state) => (
     state.status === 'won' && state.levelIndex < LEVELS.length - 1
-      ? { status: 'ready', levelIndex: state.levelIndex + 1, roundId: state.roundId + 1 }
+      ? { status: 'playing', levelIndex: state.levelIndex + 1, roundId: state.roundId + 1 }
       : state
   )),
   setLevelForDebug: (levelIndex) => set((state) => ({

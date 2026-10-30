@@ -394,6 +394,39 @@ function StreetLamp({ x, z }: { x: number; z: number }) {
   )
 }
 
+function CableSpan({
+  xStart,
+  xEnd,
+  z,
+  baseY,
+  sag,
+  zOffset,
+  color,
+  lineWidth,
+}: {
+  xStart: number
+  xEnd: number
+  z: number
+  baseY: number
+  sag: number
+  zOffset: number
+  color: string
+  lineWidth: number
+}) {
+  const midpoint = (xStart + xEnd) / 2
+  return (
+    <Line
+      points={[
+        [xStart, baseY, z],
+        [midpoint, baseY - sag, z + zOffset],
+        [xEnd, baseY, z],
+      ]}
+      color={color}
+      lineWidth={lineWidth}
+    />
+  )
+}
+
 function ParkedScooter({ x, z, color, flip = false }: { x: number; z: number; color: string; flip?: boolean }) {
   return (
     <group position={[x, 0, z]} rotation={[0, flip ? Math.PI : 0, 0]} scale={0.72}>
@@ -484,7 +517,8 @@ function SidewalkPedestrian({
 
 function DistantBackdrop({ backdropZ, roadLength }: { backdropZ: number; roadLength: number }) {
   const halfLength = roadLength / 2
-  const north = [-halfLength + 2, -halfLength / 2, 0, halfLength / 2, halfLength - 2]
+  const north = Array.from({ length: 9 }, (_, index) => -halfLength + 2.5 + index * ((roadLength - 5) / 8))
+  const south = Array.from({ length: 8 }, (_, index) => -halfLength + 3.5 + index * ((roadLength - 7) / 7))
   return (
     <group>
       {north.map((x, index) => (
@@ -492,7 +526,7 @@ function DistantBackdrop({ backdropZ, roadLength }: { backdropZ: number; roadLen
           <meshStandardMaterial color={['#9ca9a4', '#a9b2aa', '#8e9e9a'][index % 3]} roughness={1} />
         </Box>
       ))}
-      {[-halfLength + 3, -halfLength / 3, halfLength / 4, halfLength - 3].map((x, index) => (
+      {south.map((x, index) => (
         <Box key={`south-backdrop-${x}`} args={[6.3, 4.5 + (index % 2), 2]} position={[x, 2.25 + (index % 2) * 0.4, -backdropZ]}>
           <meshStandardMaterial color="#a5aaa0" roughness={1} />
         </Box>
@@ -511,12 +545,17 @@ export function Environment({ level }: { level: LevelConfig }) {
   const shopZ = level.roadHalfWidth + level.sidewalkWidth + 1.7
   const streetZ = level.roadHalfWidth + level.sidewalkWidth - 0.7
   const scooterZ = level.roadHalfWidth + level.sidewalkWidth + 0.1
-  const shopXs = [-0.43, -0.29, -0.14, 0.02, 0.18, 0.36].map((ratio) => ratio * level.roadLength)
+  const shopXs = Array.from({ length: 11 }, (_, index) => (-0.46 + index * 0.092) * level.roadLength)
   const heightBias = level.environmentPreset === 'smallStreet' ? -0.35 : level.environmentPreset === 'arterial' ? 0.45 : 0.35
   const extraScooters = level.environmentPreset === 'smallStreet' || level.environmentPreset === 'motorcycle'
-  const northLabels = ['TẠP HÓA', 'PHỞ BÒ', 'SỬA XE MÁY', 'CÀ PHÊ', 'CƠM BÌNH DÂN', 'CẮT TÓC']
-  const southLabels = ['BÚN CHẢ', 'TRÀ ĐÁ', 'RỬA XE', 'PHỞ GÀ', 'BÁNH MÌ', 'CÀ PHÊ']
-  const cableEnd = level.roadLength / 2 + 1.2
+  const northLabels = ['TẠP HÓA', 'PHỞ BÒ', 'SỬA XE MÁY', 'CÀ PHÊ', 'CƠM BÌNH DÂN', 'CẮT TÓC', 'BÚN CHẢ', 'TRÀ ĐÁ', 'BÁNH MÌ', 'CƠM GÀ', 'CÀ PHÊ']
+  const southLabels = ['BÚN CHẢ', 'TRÀ ĐÁ', 'RỬA XE', 'PHỞ GÀ', 'BÁNH MÌ', 'CÀ PHÊ', 'PHỞ BÒ', 'TẠP HÓA', 'CƠM BÌNH DÂN', 'CẮT TÓC', 'SỬA XE MÁY']
+  const poleXs = [-0.44, -0.22, 0, 0.22, 0.44].map((ratio) => ratio * level.roadLength)
+  const cableProfiles = [
+    { baseY: 6.65, sag: 0.24, zOffset: 0.16, color: '#3e4d4b', lineWidth: 1 },
+    { baseY: 6.35, sag: 0.2, zOffset: 0.25, color: '#5a6560', lineWidth: 0.8 },
+    { baseY: 6.08, sag: 0.18, zOffset: -0.25, color: '#616b65', lineWidth: 0.65 },
+  ]
 
   return (
     <group>
@@ -552,36 +591,54 @@ export function Environment({ level }: { level: LevelConfig }) {
         )
       })}
 
-      {[-level.roadLength * 0.34, level.roadLength * 0.03, level.roadLength * 0.39].map((x, index) => (
+      {poleXs.map((x, index) => (
         <group key={`poles-${x}`}>
           <UtilityPole x={x} z={streetZ} transformer={index === 1} flag={index === 0} />
-          <UtilityPole x={x + 1.2} z={-streetZ} transformer={index === 2} flag={index === 2} />
+          <UtilityPole x={x + 1.2} z={-streetZ} transformer={index === 3} flag={index === 4} />
         </group>
       ))}
-      <Line points={[[-cableEnd, 6.65, streetZ], [-cableEnd * 0.38, 6.9, streetZ + 0.16], [cableEnd * 0.12, 6.54, streetZ - 0.12], [cableEnd, 6.72, streetZ + 0.08]]} color="#3e4d4b" lineWidth={1} />
-      <Line points={[[-cableEnd, 6.35, streetZ + 0.35], [-cableEnd * 0.42, 6.55, streetZ + 0.25], [cableEnd * 0.26, 6.29, streetZ + 0.46], [cableEnd, 6.42, streetZ + 0.3]]} color="#5a6560" lineWidth={0.8} />
-      <Line points={[[-cableEnd, 6.08, streetZ - 0.25], [-cableEnd * 0.18, 6.28, streetZ - 0.08], [cableEnd * 0.48, 6.02, streetZ - 0.34], [cableEnd, 6.18, streetZ - 0.2]]} color="#616b65" lineWidth={0.65} />
-      <Line points={[[-cableEnd, 6.4, -streetZ], [-cableEnd * 0.3, 6.62, -streetZ - 0.2], [cableEnd * 0.3, 6.3, -streetZ + 0.12], [cableEnd, 6.5, -streetZ - 0.08]]} color="#3e4d4b" lineWidth={1} />
-      <Line points={[[-cableEnd, 6.13, -streetZ - 0.33], [-cableEnd * 0.36, 6.4, -streetZ - 0.18], [cableEnd * 0.5, 6.06, -streetZ - 0.42], [cableEnd, 6.24, -streetZ - 0.28]]} color="#5a6560" lineWidth={0.8} />
+      {[-1, 1].map((side) => cableProfiles.map((profile, profileIndex) => (
+        poleXs.slice(0, -1).map((x, spanIndex) => (
+          <CableSpan
+            key={`cable-${side}-${profileIndex}-${spanIndex}`}
+            xStart={x}
+            xEnd={poleXs[spanIndex + 1]}
+            z={side * (streetZ + profile.zOffset)}
+            baseY={profile.baseY}
+            sag={profile.sag}
+            zOffset={side * 0.08}
+            color={profile.color}
+            lineWidth={profile.lineWidth}
+          />
+        ))
+      )))}
       {shopXs.filter((_, index) => index % 2 === 0).map((x) => (
         <Line key={`service-drop-${x}`} points={[[x, 6.5, streetZ], [x + 0.24, 4.3, streetZ + 0.35], [x + 0.1, 3.35, streetZ + 1.25]]} color="#59645f" lineWidth={0.5} />
       ))}
 
       {[
-        [-level.roadLength * 0.37, streetZ - 0.4, 1.08, '#5d8760'],
-        [level.roadLength * 0.07, -streetZ - 0.5, 0.86, '#4e7857'],
-        [level.roadLength * 0.34, streetZ - 0.34, 1.18, '#6c8d5f'],
+        [-0.4 * level.roadLength, streetZ - 0.4, 1.08, '#5d8760'],
+        [-0.2 * level.roadLength, -streetZ - 0.5, 0.86, '#4e7857'],
+        [0.02 * level.roadLength, streetZ - 0.34, 1.18, '#6c8d5f'],
+        [0.24 * level.roadLength, -streetZ - 0.42, 0.94, '#557d5b'],
+        [0.41 * level.roadLength, streetZ - 0.36, 1.04, '#668961'],
       ].map(([x, z, scale, canopyColor], index) => (
         <group key={`street-${x}`}>
           <StreetTree x={x as number} z={z as number} scale={scale as number} canopyColor={canopyColor as string} />
           {index !== 1 && <StreetLamp x={(x as number) + 1.25} z={(z as number) - 0.05} />}
         </group>
       ))}
-      {(extraScooters ? [-level.roadLength * 0.38, -level.roadLength * 0.08, level.roadLength * 0.25, level.roadLength * 0.42] : [-10, 2, 12]).map((x, index) => (
-        <ParkedScooter key={`scooter-north-${x}`} x={x} z={scooterZ} color={['#c95e4e', '#2d6e74', '#e0b647', '#b75350'][index]} />
+      {(extraScooters
+        ? [-0.43, -0.29, -0.13, 0.05, 0.23, 0.4].map((ratio) => ratio * level.roadLength)
+        : [-0.37, -0.12, 0.14, 0.39].map((ratio) => ratio * level.roadLength)
+      ).map((x, index) => (
+        <ParkedScooter key={`scooter-north-${x}`} x={x} z={scooterZ} color={['#c95e4e', '#2d6e74', '#e0b647', '#b75350', '#536d68', '#d7d0b2'][index % 6]} />
       ))}
-      {(extraScooters ? [-level.roadLength * 0.34, -level.roadLength * 0.08, level.roadLength * 0.3] : [-12, -3, 8]).map((x, index) => (
-        <ParkedScooter key={`scooter-south-${x}`} x={x} z={-scooterZ} color={['#d8ad3f', '#4d7e66', '#b75350'][index]} flip />
+      {(extraScooters
+        ? [-0.38, -0.2, -0.02, 0.16, 0.34].map((ratio) => ratio * level.roadLength)
+        : [-0.32, -0.08, 0.18, 0.4].map((ratio) => ratio * level.roadLength)
+      ).map((x, index) => (
+        <ParkedScooter key={`scooter-south-${x}`} x={x} z={-scooterZ} color={['#d8ad3f', '#4d7e66', '#b75350', '#2f6e73', '#c7c2a2'][index % 5]} flip />
       ))}
       <SidewalkPedestrian
         x={-level.roadLength * 0.28}

@@ -13,6 +13,7 @@ import type { PlayerTrafficState, TrafficSnapshot } from './traffic.types'
 
 type VehicleProps = {
   config: VehicleConfig
+  trafficBoundaryX: number
   onReset: (id: number) => SpawnInstruction
   onUpdate: (id: number, x: number, z: number, speed: number, active: boolean) => void
   getTraffic: () => Map<number, TrafficSnapshot>
@@ -730,10 +731,10 @@ export function VehicleModel({ config, color, wheelRefs, heading }: { config: Ve
   return <CarModel config={config} color={color} wheelRefs={wheelRefs} heading={heading} />
 }
 
-export function Vehicle({ config, getTraffic, onReset, onUpdate, playerState, intersectionRuntime }: VehicleProps) {
+export function Vehicle({ config, trafficBoundaryX, getTraffic, onReset, onUpdate, playerState, intersectionRuntime }: VehicleProps) {
   const body = useRef<RapierRigidBody>(null)
   const visuals = useRef<THREE.Group>(null)
-  const wheelRefs = useRef<Array<THREE.Mesh | null>>([])
+  const wheelRefs = useRef<Array<THREE.Object3D | null>>([])
   const nextTranslation = useRef({ x: 0, y: 0, z: 0 })
   const initialLateralOffset = clampLateralOffset(config, config.lateralBias)
   const runtime = useRef<VehicleRuntime>({
@@ -752,7 +753,7 @@ export function Vehicle({ config, getTraffic, onReset, onUpdate, playerState, in
   const isMotorcycle = config.kind === 'motorcycle'
   const isLarge = isLargeVehicle(config.kind)
   const color = getVehicleColor(config)
-  const initialX = config.spawnDelay === 0 ? config.startX : config.direction === 1 ? -20.5 : 20.5
+  const initialX = config.spawnDelay === 0 ? config.startX : config.direction === 1 ? -trafficBoundaryX : trafficBoundaryX
   const y = isMotorcycle ? 0.42 : isLarge ? 0.9 : 0.65
 
   const setNextTranslation = (x: number, z: number) => {
@@ -867,7 +868,7 @@ export function Vehicle({ config, getTraffic, onReset, onUpdate, playerState, in
       return
     }
 
-    const passedEnd = config.direction === 1 ? nextX > TRAFFIC_TUNING.vehicleEndX : nextX < -TRAFFIC_TUNING.vehicleEndX
+    const passedEnd = config.direction === 1 ? nextX > trafficBoundaryX : nextX < -trafficBoundaryX
 
     if (passedEnd) {
       const spawn = onReset(config.id)
