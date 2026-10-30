@@ -1,4 +1,4 @@
-import { useEffect, useRef, type MutableRefObject } from 'react'
+import { useEffect, useMemo, useRef, type MutableRefObject } from 'react'
 import { Box, Cylinder, Icosahedron } from '@react-three/drei'
 import { useFrame } from '@react-three/fiber'
 import { CuboidCollider, RigidBody, type RapierRigidBody } from '@react-three/rapier'
@@ -20,16 +20,17 @@ type VehicleProps = {
   intersectionRuntime: IntersectionRuntime | null
 }
 
-type WheelRefs = MutableRefObject<Array<THREE.Mesh | null>>
+type WheelRefs = MutableRefObject<Array<THREE.Object3D | null>>
 export type VehicleVisualConfig = Pick<VehicleConfig, 'id' | 'kind' | 'direction' | 'width' | 'length' | 'style'>
 
 // Traffic advances along X, so each wheel axle runs laterally along Z.
-// CylinderGeometry is Y-axis aligned by default; this rotation turns its axle into Z.
-const WHEEL_AXLE_ROTATION: [number, number, number] = [Math.PI / 2, 0, 0]
+// CylinderGeometry starts with its long axis on Y; bake Y -> Z once so the
+// animated wheel object can stay at zero rotation and spin only around Z.
+const WHEEL_GEOMETRY_ROTATION_X = Math.PI / 2
 const ROAD_SURFACE_Y = -0.02
 const WHEEL_LOCAL_Y = 0.29
 
-function getVehicleWheelRadius(config: VehicleVisualConfig) {
+export function getVehicleWheelRadius(config: VehicleVisualConfig) {
   if (config.kind === 'motorcycle') {
     return config.style === 'underbone' ? 0.3 : config.style === 'sportScooter' ? 0.27 : 0.24
   }
@@ -214,35 +215,45 @@ function Wheel({ radius, width, position, wheelRefs, index, side = 1, spokeCount
   side?: number
   spokeCount?: number
 }) {
+  const tireGeometry = useMemo(() => {
+    const geometry = new THREE.CylinderGeometry(radius, radius, width, 10)
+    geometry.rotateX(WHEEL_GEOMETRY_ROTATION_X)
+    return geometry
+  }, [radius, width])
+  const hubGeometry = useMemo(() => {
+    const geometry = new THREE.CylinderGeometry(radius * 0.42, radius * 0.42, width + 0.018, 8)
+    geometry.rotateX(WHEEL_GEOMETRY_ROTATION_X)
+    return geometry
+  }, [radius, width])
+
   return (
     <group position={position}>
-      <Cylinder
+      <group
         ref={(node) => {
           if (wheelRefs && index !== undefined) wheelRefs.current[index] = node
         }}
-        args={[radius, radius, width, 10]}
-        rotation={WHEEL_AXLE_ROTATION}
-        castShadow
       >
-        <meshStandardMaterial color="#202729" roughness={0.94} />
-      </Cylinder>
-      <Cylinder args={[radius * 0.42, radius * 0.42, width + 0.018, 8]} rotation={WHEEL_AXLE_ROTATION}>
-        <meshStandardMaterial color="#69716e" roughness={0.62} metalness={0.24} />
-      </Cylinder>
-      {Array.from({ length: spokeCount }, (_, spokeIndex) => {
-        const angle = (spokeIndex / spokeCount) * Math.PI * 2 + Math.PI / 10
-        const spokeRadius = radius * 0.34
-        return (
-          <Box
-            key={spokeIndex}
-            args={[radius * 0.62, radius * 0.055, width * 0.18]}
-            position={[Math.cos(angle) * spokeRadius, Math.sin(angle) * spokeRadius, side * (width / 2 + 0.014)]}
-            rotation={[0, 0, angle]}
-          >
-            <meshStandardMaterial color="#394342" roughness={0.72} metalness={0.18} />
-          </Box>
-        )
-      })}
+        <mesh geometry={tireGeometry} castShadow>
+          <meshStandardMaterial color="#202729" roughness={0.94} />
+        </mesh>
+        <mesh geometry={hubGeometry}>
+          <meshStandardMaterial color="#69716e" roughness={0.62} metalness={0.24} />
+        </mesh>
+        {Array.from({ length: spokeCount }, (_, spokeIndex) => {
+          const angle = (spokeIndex / spokeCount) * Math.PI * 2 + Math.PI / 10
+          const spokeRadius = radius * 0.34
+          return (
+            <Box
+              key={spokeIndex}
+              args={[radius * 0.62, radius * 0.055, width * 0.18]}
+              position={[Math.cos(angle) * spokeRadius, Math.sin(angle) * spokeRadius, side * (width / 2 + 0.014)]}
+              rotation={[0, 0, angle]}
+            >
+              <meshStandardMaterial color="#394342" roughness={0.72} metalness={0.18} />
+            </Box>
+          )
+        })}
+      </group>
     </group>
   )
 }
@@ -520,7 +531,7 @@ function MotorcycleModel({ config, color, wheelRefs, heading: headingOverride }:
           <Cylinder args={[0.055, 0.07, 0.62, 7]} rotation={[0, 0, -0.13]} position={[0.42, 0.4, 0.27]}>
             <meshStandardMaterial color="#555c59" roughness={0.82} metalness={0.16} />
           </Cylinder>
-          <Cylinder args={[0.14, 0.14, 0.018, 8]} rotation={WHEEL_AXLE_ROTATION} position={[wheelBase, WHEEL_LOCAL_Y, 0.08]}>
+          <Cylinder args={[0.14, 0.14, 0.018, 8]} rotation={[Math.PI / 2, 0, 0]} position={[wheelBase, WHEEL_LOCAL_Y, 0.08]}>
             <meshStandardMaterial color="#a8aaa0" roughness={0.6} metalness={0.28} />
           </Cylinder>
         </>
@@ -880,8 +891,9 @@ export function Vehicle({ config, getTraffic, onReset, onUpdate, playerState, in
         : THREE.MathUtils.clamp((state.targetLateralOffset - state.lateralOffset) * config.direction * 0.16, -0.14, 0.14)
     }
     onUpdate(config.id, nextX, nextZ, state.speed, true)
+    const angularVelocity = -(state.speed * config.direction) / getVehicleWheelRadius(config)
     wheelRefs.current.forEach((wheel) => {
-      if (wheel) wheel.rotation.z += state.speed * config.direction * frameDelta * 1.45
+      if (wheel) wheel.rotation.z += angularVelocity * frameDelta
     })
   })
 

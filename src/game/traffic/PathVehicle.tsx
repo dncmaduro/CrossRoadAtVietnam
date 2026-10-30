@@ -7,7 +7,7 @@ import type { IntersectionRuntime } from '../intersection/intersection.runtime'
 import type { PathVehicleConfig } from '../intersection/intersection.types'
 import { ACTIVE_COLLISION_TYPES_ALL, didVehicleHitPlayer, TRAFFIC_COLLISION_GROUPS } from './trafficPhysics'
 import type { PlayerTrafficState, TrafficSnapshot } from './traffic.types'
-import { getVehicleColor, VehicleModel } from './Vehicle'
+import { getVehicleColor, getVehicleWheelRadius, VehicleModel } from './Vehicle'
 
 type PathVehicleProps = {
   config: PathVehicleConfig
@@ -145,8 +145,9 @@ export function PathVehicle({ config, getTraffic, onUpdate, playerState, interse
     setNextTransform(position.current.x, position.current.y, heading)
     if (visuals.current) visuals.current.rotation.y = heading
     onUpdate(config.id, position.current.x, position.current.y, state.speed, true, config.path.id)
+    const angularVelocity = -state.speed / getVehicleWheelRadius(config.visualConfig)
     wheelRefs.current.forEach((wheel) => {
-      if (wheel) wheel.rotation.z += state.speed * frameDelta * 1.2
+      if (wheel) wheel.rotation.z += angularVelocity * frameDelta
     })
   })
 
