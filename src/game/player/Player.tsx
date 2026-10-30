@@ -13,6 +13,18 @@ const ACCELERATION = 14
 const DECELERATION = 20
 const PLAYER_RADIUS = 0.35
 const BASE_FOV = 72
+const IMPACT_DURATION = 0.34
+
+const movementKeyCodes = new Set([
+  'KeyW',
+  'KeyA',
+  'KeyS',
+  'KeyD',
+  'ArrowUp',
+  'ArrowLeft',
+  'ArrowDown',
+  'ArrowRight',
+])
 
 type PlayerProps = {
   trafficState: PlayerTrafficState
@@ -24,6 +36,7 @@ export function Player({ trafficState, level }: PlayerProps) {
   const keys = useRef(new Set<string>())
   const { camera } = useThree()
   const status = useGameStore((state) => state.status)
+  const statusRef = useRef(status)
   const lose = useGameStore((state) => state.lose)
   const win = useGameStore((state) => state.win)
   const forward = useRef(new THREE.Vector3())
@@ -35,10 +48,15 @@ export function Player({ trafficState, level }: PlayerProps) {
   const impactOffset = useRef(new THREE.Vector3())
   const bobTime = useRef(0)
 
+  statusRef.current = status
+
   useEffect(() => {
     camera.rotation.set(0, Math.PI, 0)
 
-    const onKeyDown = (event: KeyboardEvent) => keys.current.add(event.code)
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (statusRef.current === 'playing' && event.code.startsWith('Arrow')) event.preventDefault()
+      if (movementKeyCodes.has(event.code) || event.code.startsWith('Shift')) keys.current.add(event.code)
+    }
     const onKeyUp = (event: KeyboardEvent) => keys.current.delete(event.code)
     const clearInput = () => {
       keys.current.clear()
@@ -62,7 +80,7 @@ export function Player({ trafficState, level }: PlayerProps) {
     velocity.current.set(0, 0, 0)
 
     if (status === 'lost') {
-      impactTime.current = 0.28
+      impactTime.current = IMPACT_DURATION
       document.exitPointerLock?.()
     } else if (status === 'won') {
       document.exitPointerLock?.()
@@ -85,20 +103,24 @@ export function Player({ trafficState, level }: PlayerProps) {
     }
 
     if (impactTime.current > 0) {
-      const progress = impactTime.current / 0.28
+      const progress = impactTime.current / IMPACT_DURATION
+      const elapsed = IMPACT_DURATION - impactTime.current
       impactTime.current = Math.max(0, impactTime.current - frameDelta)
       impactOffset.current.set(
-        Math.sin((0.28 - impactTime.current) * 58) * 0.06 * progress,
-        Math.abs(Math.sin((0.28 - impactTime.current) * 42)) * 0.035 * progress,
-        0,
+        Math.sin(elapsed * 58) * 0.12 * progress,
+        -0.1 * progress + Math.abs(Math.sin(elapsed * 42)) * 0.04 * progress,
+        -0.08 * progress,
       )
       camera.position.add(impactOffset.current)
+      camera.rotation.z = Math.sin(elapsed * 27) * 0.18 * progress
+    } else if (Math.abs(camera.rotation.z) > 0.001) {
+      camera.rotation.z = THREE.MathUtils.damp(camera.rotation.z, 0, 12, frameDelta)
     }
 
     const audioImpulse = gameAudio.consumeCameraImpulse(frameDelta)
     if (audioImpulse > 0) {
-      camera.position.x += Math.sin((0.28 - impactTime.current) * 54) * audioImpulse
-      camera.position.y += Math.abs(Math.cos((0.28 - impactTime.current) * 44)) * audioImpulse * 0.45
+      camera.position.x += Math.sin((IMPACT_DURATION - impactTime.current) * 54) * audioImpulse
+      camera.position.y += Math.abs(Math.cos((IMPACT_DURATION - impactTime.current) * 44)) * audioImpulse * 0.45
     }
 
     if (status !== 'playing') {
@@ -112,10 +134,10 @@ export function Player({ trafficState, level }: PlayerProps) {
     }
 
     const input = movement.current.set(0, 0, 0)
-    if (keys.current.has('KeyW')) input.z += 1
-    if (keys.current.has('KeyS')) input.z -= 1
-    if (keys.current.has('KeyA')) input.x -= 1
-    if (keys.current.has('KeyD')) input.x += 1
+    if (keys.current.has('KeyW') || keys.current.has('ArrowUp')) input.z += 1
+    if (keys.current.has('KeyS') || keys.current.has('ArrowDown')) input.z -= 1
+    if (keys.current.has('KeyA') || keys.current.has('ArrowLeft')) input.x -= 1
+    if (keys.current.has('KeyD') || keys.current.has('ArrowRight')) input.x += 1
     const hasInput = input.lengthSq() > 0
     if (hasInput) {
       input.normalize()

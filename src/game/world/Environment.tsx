@@ -1,5 +1,6 @@
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { Box, Cylinder, Icosahedron, Line } from '@react-three/drei'
+import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import type { LevelConfig } from '../levels/level.config'
 
@@ -86,8 +87,36 @@ function AirConditioner({ x, y, facadeZ }: { x: number; y: number; facadeZ: numb
   )
 }
 
+function StorefrontAwning({ color, facadeZ }: { color: string; facadeZ: number }) {
+  return (
+    <group position={[0, 2.05, facadeZ - 0.38]}>
+      <Box args={[4.35, 0.12, 0.72]} rotation={[0.16, 0, 0]} castShadow>
+        <meshStandardMaterial color={color} roughness={0.82} />
+      </Box>
+      {[-1.72, 1.72].map((x) => (
+        <Cylinder key={x} args={[0.035, 0.035, 0.58, 6]} position={[x, -0.24, -0.25]}>
+          <meshStandardMaterial color="#626a66" roughness={0.86} metalness={0.12} />
+        </Cylinder>
+      ))}
+    </group>
+  )
+}
+
+function PottedPlant({ position }: { position: [number, number, number] }) {
+  return (
+    <group position={position}>
+      <Cylinder args={[0.2, 0.26, 0.32, 8]} position={[0, 0.16, 0]}>
+        <meshStandardMaterial color="#a56547" roughness={0.92} />
+      </Cylinder>
+      <Icosahedron args={[0.34, 1]} position={[0, 0.56, 0]}>
+        <meshStandardMaterial color="#4f805d" roughness={1} flatShading />
+      </Icosahedron>
+    </group>
+  )
+}
+
 function ShopProps({ label, facadeZ }: { label: string; facadeZ: number }) {
-  if (label === 'CÀ PHÊ' || label === 'PHỞ' || label === 'BÚN') {
+  if (label === 'CÀ PHÊ' || label === 'PHỞ' || label === 'BÚN' || label === 'CƠM' || label === 'BÁNH MÌ') {
     return (
       <group position={[0, 0, facadeZ - 0.58]}>
         <Cylinder args={[0.28, 0.28, 0.7, 8]} position={[-1.15, 0.35, 0]}>
@@ -188,7 +217,9 @@ function ShopHouse({ x, z, bodyColor, roofColor, signColor, label, heightBias = 
       </Box>
 
       <SignBoard label={label} color={signColor} position={[-0.65, height - 0.78, facadeZ - 0.08]} />
+      <StorefrontAwning color={signColor} facadeZ={facadeZ} />
       <ShopProps label={label} facadeZ={facadeZ} />
+      <PottedPlant position={[2.18, 0, facadeZ - 0.66]} />
       <AirConditioner x={1.75} y={height - 1.05} facadeZ={facadeZ} />
 
       {windowRows.map((windowY, row) => (
@@ -224,7 +255,7 @@ function ShopHouse({ x, z, bodyColor, roofColor, signColor, label, heightBias = 
   )
 }
 
-function UtilityPole({ x, z, transformer = false }: { x: number; z: number; transformer?: boolean }) {
+function UtilityPole({ x, z, transformer = false, flag = false }: { x: number; z: number; transformer?: boolean; flag?: boolean }) {
   return (
     <group position={[x, 0, z]}>
       <Cylinder args={[0.11, 0.16, 7.3, 6]} position={[0, 3.65, 0]} castShadow>
@@ -242,6 +273,16 @@ function UtilityPole({ x, z, transformer = false }: { x: number; z: number; tran
       <Box args={[0.65, 0.62, 0.55]} position={[0.42, 5.72, 0.18]}>
           <meshStandardMaterial color="#737b72" roughness={0.78} metalness={0.12} />
         </Box>
+      )}
+      {flag && (
+        <group position={[0.05, 5.75, -0.18]}>
+          <Box args={[0.82, 0.48, 0.04]}>
+            <meshStandardMaterial color="#b8443e" roughness={0.84} />
+          </Box>
+          <Cylinder args={[0.13, 0.13, 0.025, 5]} rotation={[Math.PI / 2, 0, 0]} position={[0, 0, -0.035]}>
+            <meshStandardMaterial color="#f2cf5b" roughness={0.72} emissive="#5c4613" emissiveIntensity={0.12} />
+          </Cylinder>
+        </group>
       )}
     </group>
   )
@@ -316,6 +357,63 @@ function ParkedScooter({ x, z, color, flip = false }: { x: number; z: number; co
   )
 }
 
+function SidewalkPedestrian({
+  x,
+  z,
+  direction,
+  bound,
+  index,
+}: {
+  x: number
+  z: number
+  direction: 1 | -1
+  bound: number
+  index: number
+}) {
+  const group = useRef<THREE.Group>(null)
+  const leftLeg = useRef<THREE.Group>(null)
+  const rightLeg = useRef<THREE.Group>(null)
+  const phase = useRef(index * 1.7)
+
+  useFrame((_, delta) => {
+    phase.current += delta * 6.5
+    const current = group.current
+    if (current) {
+      current.position.x += direction * delta * (0.32 + index * 0.035)
+      if (current.position.x > bound) current.position.x = -bound
+      if (current.position.x < -bound) current.position.x = bound
+    }
+    if (leftLeg.current) leftLeg.current.rotation.z = Math.sin(phase.current) * 0.32
+    if (rightLeg.current) rightLeg.current.rotation.z = Math.sin(phase.current + Math.PI) * 0.32
+  })
+
+  return (
+    <group ref={group} position={[x, 0, z]} rotation={[0, direction === 1 ? 0 : Math.PI, 0]}>
+      <Box args={[0.28, 0.58, 0.22]} position={[0, 1.02, 0]}>
+        <meshStandardMaterial color={index % 2 === 0 ? '#536d68' : '#a05c48'} roughness={0.9} />
+      </Box>
+      <Icosahedron args={[0.17, 1]} position={[0, 1.48, 0]}>
+        <meshStandardMaterial color="#b88462" roughness={0.96} flatShading />
+      </Icosahedron>
+      <group ref={leftLeg} position={[-0.09, 0.76, 0]}>
+        <Box args={[0.09, 0.54, 0.09]} position={[0, -0.27, 0]}>
+          <meshStandardMaterial color="#303b3d" roughness={0.92} />
+        </Box>
+      </group>
+      <group ref={rightLeg} position={[0.09, 0.76, 0]}>
+        <Box args={[0.09, 0.54, 0.09]} position={[0, -0.27, 0]}>
+          <meshStandardMaterial color="#303b3d" roughness={0.92} />
+        </Box>
+      </group>
+      {[-1, 1].map((side) => (
+        <Box key={side} args={[0.07, 0.42, 0.07]} position={[side * 0.2, 0.98, 0]} rotation={[0, 0, side * -0.25]}>
+          <meshStandardMaterial color="#536d68" roughness={0.9} />
+        </Box>
+      ))}
+    </group>
+  )
+}
+
 function DistantBackdrop({ backdropZ, roadLength }: { backdropZ: number; roadLength: number }) {
   const halfLength = roadLength / 2
   const north = [-halfLength + 2, -halfLength / 2, 0, halfLength / 2, halfLength - 2]
@@ -352,8 +450,8 @@ export function Environment({ level }: { level: LevelConfig }) {
       : [-12, -6, 0, 6, 12]
   const heightBias = level.environmentPreset === 'smallStreet' ? -0.35 : level.environmentPreset === 'arterial' ? 0.45 : 0.35
   const extraScooters = level.environmentPreset === 'smallStreet' || level.environmentPreset === 'motorcycle'
-  const northLabels = ['TẠP HÓA', 'CÀ PHÊ', 'PHỞ', 'SỬA XE', 'CẮT TÓC']
-  const southLabels = ['BÚN', 'TẠP HÓA', 'CÀ PHÊ', 'SỬA XE', 'PHỞ']
+  const northLabels = ['TẠP HÓA', 'CÀ PHÊ', 'PHỞ', 'SỬA XE', 'CƠM']
+  const southLabels = ['BÚN', 'BÁNH MÌ', 'CÀ PHÊ', 'SỬA XE', 'CẮT TÓC']
   const cableEnd = level.roadLength / 2 + 1.2
 
   return (
@@ -392,8 +490,8 @@ export function Environment({ level }: { level: LevelConfig }) {
 
       {[-level.roadLength * 0.34, level.roadLength * 0.03, level.roadLength * 0.39].map((x, index) => (
         <group key={`poles-${x}`}>
-          <UtilityPole x={x} z={streetZ} transformer={index === 1} />
-          <UtilityPole x={x + 1.2} z={-streetZ} transformer={index === 2} />
+          <UtilityPole x={x} z={streetZ} transformer={index === 1} flag={index === 0} />
+          <UtilityPole x={x + 1.2} z={-streetZ} transformer={index === 2} flag={index === 2} />
         </group>
       ))}
       <Line points={[[-cableEnd, 6.65, streetZ], [0, 6.95, streetZ], [cableEnd, 6.65, streetZ]]} color="#3e4d4b" lineWidth={1} />
@@ -414,6 +512,38 @@ export function Environment({ level }: { level: LevelConfig }) {
       {(extraScooters ? [-level.roadLength * 0.34, -level.roadLength * 0.08, level.roadLength * 0.3] : [-12, -3, 8]).map((x, index) => (
         <ParkedScooter key={`scooter-south-${x}`} x={x} z={-scooterZ} color={['#d8ad3f', '#4d7e66', '#b75350'][index]} flip />
       ))}
+      <SidewalkPedestrian
+        x={-level.roadLength * 0.28}
+        z={level.roadHalfWidth + level.sidewalkWidth * 0.54}
+        direction={1}
+        bound={level.roadLength / 2 - 1.5}
+        index={0}
+      />
+      <SidewalkPedestrian
+        x={level.roadLength * 0.22}
+        z={-(level.roadHalfWidth + level.sidewalkWidth * 0.54)}
+        direction={-1}
+        bound={level.roadLength / 2 - 1.5}
+        index={1}
+      />
+      {level.environmentPreset !== 'smallStreet' && (
+        <>
+          <SidewalkPedestrian
+            x={level.roadLength * 0.42}
+            z={level.roadHalfWidth + level.sidewalkWidth * 0.48}
+            direction={-1}
+            bound={level.roadLength / 2 - 1.5}
+            index={2}
+          />
+          <SidewalkPedestrian
+            x={-level.roadLength * 0.46}
+            z={-(level.roadHalfWidth + level.sidewalkWidth * 0.48)}
+            direction={1}
+            bound={level.roadLength / 2 - 1.5}
+            index={3}
+          />
+        </>
+      )}
     </group>
   )
 }

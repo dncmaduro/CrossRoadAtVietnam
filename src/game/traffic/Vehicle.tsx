@@ -164,15 +164,21 @@ function chooseMotorcycleOffset(
 
 function CarModel({ config, color, wheelRefs, heading: headingOverride }: { config: VehicleVisualConfig; color: string; wheelRefs: WheelRefs; heading?: number }) {
   const heading = headingOverride ?? (config.direction === 1 ? 0 : Math.PI)
+  const isCompactEv = config.style === 'compactEv'
 
   return (
     <group rotation={[0, heading, 0]}>
       <Box args={[config.length, 0.62, config.width]} position={[0, 0.44, 0]} castShadow>
         <meshStandardMaterial color={color} roughness={0.66} />
       </Box>
-      <Box args={[config.length * 0.52, 0.42, config.width * 0.84]} position={[-0.12, 0.92, 0]} castShadow>
+      <Box args={[config.length * (isCompactEv ? 0.68 : 0.52), isCompactEv ? 0.52 : 0.42, config.width * 0.84]} position={[-0.12, isCompactEv ? 0.94 : 0.92, 0]} castShadow>
         <meshStandardMaterial color="#79979b" metalness={0.04} roughness={0.3} />
       </Box>
+      {isCompactEv && (
+        <Box args={[config.length * 0.42, 0.11, config.width * 0.76]} position={[-0.12, 1.22, 0]}>
+          <meshStandardMaterial color={color} roughness={0.68} />
+        </Box>
+      )}
       <Box args={[config.length * 0.28, 0.22, 0.035]} position={[-0.12, 0.96, -config.width * 0.435]}>
         <meshStandardMaterial color="#30464a" roughness={0.3} />
       </Box>
@@ -191,6 +197,11 @@ function CarModel({ config, color, wheelRefs, heading: headingOverride }: { conf
       <Box args={[0.12, 0.14, config.width + 0.12]} position={[-config.length * 0.48, 0.24, 0]}>
         <meshStandardMaterial color="#4f5755" roughness={0.78} metalness={0.16} />
       </Box>
+      {[-1, 1].map((side) => (
+        <Box key={side} args={[0.04, 0.12, 0.34]} position={[side * config.length * 0.505, 0.5, 0]}>
+          <meshStandardMaterial color="#eee6cf" roughness={0.72} />
+        </Box>
+      ))}
       {[-0.82, 0.82].map((x, index) => (
         <group key={x}>
           {[-1, 1].map((side) => (
@@ -254,18 +265,24 @@ function Rider({ color }: { color: string }) {
 function MotorcycleModel({ config, color, wheelRefs, heading: headingOverride }: { config: VehicleVisualConfig; color: string; wheelRefs: WheelRefs; heading?: number }) {
   const heading = headingOverride ?? (config.direction === 1 ? 0 : Math.PI)
   const isScooter = config.style !== 'underbone'
+  const isSportScooter = config.style === 'sportScooter'
   const riderColor = config.id % 2 === 0 ? '#53635e' : '#6d4e42'
 
   return (
     <group rotation={[0, heading, 0]} scale={0.86}>
       {isScooter ? (
         <>
-          <Box args={[0.98, 0.28, 0.35]} position={[0, 0.56, 0]}>
+          <Box args={[isSportScooter ? 1.12 : 0.98, isSportScooter ? 0.32 : 0.28, isSportScooter ? 0.4 : 0.35]} position={[0, 0.56, 0]}>
             <meshStandardMaterial color={color} roughness={0.68} />
           </Box>
-          <Box args={[0.36, 0.66, 0.29]} position={[0.44, 0.8, 0]}>
+          <Box args={[isSportScooter ? 0.44 : 0.36, isSportScooter ? 0.72 : 0.66, isSportScooter ? 0.33 : 0.29]} position={[isSportScooter ? 0.46 : 0.44, 0.8, 0]}>
             <meshStandardMaterial color={color} roughness={0.7} />
           </Box>
+          {isSportScooter && (
+            <Box args={[0.18, 0.42, 0.42]} position={[0.68, 0.92, 0]} rotation={[0, 0, -0.1]}>
+              <meshStandardMaterial color="#263436" roughness={0.62} />
+            </Box>
+          )}
           <Box args={[0.58, 0.12, 0.35]} position={[-0.2, 0.78, 0]}>
             <meshStandardMaterial color="#242d2e" roughness={0.86} />
           </Box>
@@ -320,6 +337,9 @@ function MotorcycleModel({ config, color, wheelRefs, heading: headingOverride }:
           </Cylinder>
         </group>
       ))}
+      <Box args={[0.16, 0.08, 0.04]} position={[-0.74, 0.51, 0]}>
+        <meshStandardMaterial color="#eee6cf" roughness={0.72} />
+      </Box>
       <Rider color={riderColor} />
     </group>
   )

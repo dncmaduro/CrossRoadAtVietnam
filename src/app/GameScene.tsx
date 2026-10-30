@@ -25,7 +25,7 @@ export function GameScene({ controls, pointerLockAvailable, onReady }: GameScene
     >
       <color attach="background" args={['#cbdde1']} />
       <fog attach="fog" args={['#cbdde1', 30, 56]} />
-      <PointerLockControls ref={controls} selector="canvas" enabled={pointerLockAvailable} />
+      <PointerLockControls ref={controls} selector=".game-canvas canvas" enabled={pointerLockAvailable} />
       <Game />
     </Canvas>
   )

@@ -2,7 +2,9 @@ import { getLaneConfigs, type LevelConfig, type SignalGroup, type TrafficProfile
 import type { PathVehicleConfig, TrafficPath, Vec2 } from '../intersection/intersection.types'
 
 export type VehicleKind = 'car' | 'motorcycle' | 'bus' | 'truck'
-export type MotorcycleStyle = 'scooter' | 'underbone'
+export type MotorcycleStyle = 'scooter' | 'underbone' | 'sportScooter'
+export type CarStyle = 'compactEv' | 'sedan'
+export type VehicleStyle = MotorcycleStyle | CarStyle
 
 export type VehicleConfig = {
   id: number
@@ -21,7 +23,7 @@ export type VehicleConfig = {
   reactionDistance: number
   aggression: number
   lateralBias: number
-  style?: MotorcycleStyle
+  style?: VehicleStyle
 }
 
 export const TRAFFIC_TUNING = {
@@ -74,10 +76,11 @@ export function pickVehicleKind(profile: TrafficProfile, laneIndex: number, vehi
   return roll < profile.motorcycleRatio ? 'motorcycle' : 'car'
 }
 
-export function getVehicleDimensions(kind: VehicleKind) {
+export function getVehicleDimensions(kind: VehicleKind, style?: VehicleStyle) {
   if (kind === 'motorcycle') return { width: 0.56, length: 1.45 }
   if (kind === 'bus') return { width: 1.55, length: 5.2 }
   if (kind === 'truck') return { width: 1.6, length: 4.5 }
+  if (style === 'compactEv') return { width: 1.16, length: 2.4 }
   return { width: 1.15, length: 2.7 }
 }
 
@@ -91,7 +94,10 @@ export function createVehicleConfigs(level: LevelConfig): VehicleConfig[] {
       const kind = pickVehicleKind(profile, lane.index, vehicleIndex)
       const motorcycle = kind === 'motorcycle'
       const large = kind === 'bus' || kind === 'truck'
-      const dimensions = getVehicleDimensions(kind)
+      const style = motorcycle
+        ? id % 3 === 0 ? 'sportScooter' as const : id % 3 === 1 ? 'scooter' as const : 'underbone' as const
+        : kind === 'car' ? (id % 3 === 0 ? 'compactEv' as const : 'sedan' as const) : undefined
+      const dimensions = getVehicleDimensions(kind, style)
       const speed = sampleRange(profile.speedRange, id + lane.index * 3)
       const aggression = large ? sampleRange([profile.aggressionRange[0] * 0.55, profile.aggressionRange[1] * 0.8], id * 2 + lane.index) : sampleRange(profile.aggressionRange, id * 2 + lane.index)
       const directionOffset = lane.direction === 1 ? -1 : 1
@@ -114,7 +120,7 @@ export function createVehicleConfigs(level: LevelConfig): VehicleConfig[] {
         ),
         aggression,
         lateralBias: motorcycle ? ((id % 5) - 2) * 0.14 : ((id % 3) - 1) * 0.06,
-        style: motorcycle ? (id % 2 === 0 ? 'scooter' : 'underbone') : undefined,
+        style,
         signalGroup: level.intersection?.signal ? 'eastWest' : undefined,
         signalStopX: level.intersection?.signal ? level.intersection.crossRoadHalfWidth + 0.38 : undefined,
       })
@@ -185,7 +191,10 @@ export function createPathVehicleConfigs(level: LevelConfig): PathVehicleConfig[
     const turn = turnRoll < intersection.turnProbability
     const path = createPathForIndex(index, intersection.pathLength, turn)
     const kind = pickVehicleKind(profile, 10 + index, index)
-    const dimensions = getVehicleDimensions(kind)
+    const style = kind === 'motorcycle'
+      ? index % 3 === 0 ? 'sportScooter' as const : index % 3 === 1 ? 'scooter' as const : 'underbone' as const
+      : kind === 'car' ? (index % 3 === 0 ? 'compactEv' as const : 'sedan' as const) : undefined
+    const dimensions = getVehicleDimensions(kind, style)
     const speed = sampleRange(profile.speedRange, index + 19) * (path.turnType === 'straight' ? 1 : 0.84)
     const visualConfig = {
       id: 100 + index,
@@ -193,7 +202,7 @@ export function createPathVehicleConfigs(level: LevelConfig): PathVehicleConfig[
       direction: 1 as const,
       width: dimensions.width,
       length: dimensions.length,
-      style: kind === 'motorcycle' ? (index % 2 === 0 ? 'scooter' as const : 'underbone' as const) : undefined,
+      style,
     }
     configs.push({
       id: 100 + index,

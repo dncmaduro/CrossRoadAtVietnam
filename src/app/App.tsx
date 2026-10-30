@@ -88,7 +88,13 @@ function App() {
         </Suspense>
       </SceneErrorBoundary>
 
-      {status === 'ready' && <StartOverlay levelName={LEVELS[levelIndex].name} onStart={() => lockAndPlay(start)} />}
+      {status === 'ready' && (
+        <StartOverlay
+          levelName={LEVELS[levelIndex].name}
+          pointerLockAvailable={pointerLockAvailable}
+          onStart={() => lockAndPlay(start)}
+        />
+      )}
       {(status === 'lost' || status === 'won') && (
         <ResultOverlay
           status={status}

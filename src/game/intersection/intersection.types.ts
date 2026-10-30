@@ -29,6 +29,6 @@ export type PathVehicleConfig = {
     direction: 1 | -1
     width: number
     length: number
-    style?: 'scooter' | 'underbone'
+    style?: 'scooter' | 'underbone' | 'sportScooter' | 'compactEv' | 'sedan'
   }
 }
