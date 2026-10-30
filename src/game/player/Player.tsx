@@ -5,6 +5,7 @@ import * as THREE from 'three'
 import { gameAudio } from '../audio/AudioManager'
 import { useGameStore } from '../../store/gameStore'
 import type { LevelConfig } from '../levels/level.config'
+import { ACTIVE_COLLISION_TYPES_ALL, PLAYER_COLLISION_GROUPS } from '../traffic/trafficPhysics'
 import type { PlayerTrafficState } from '../traffic/traffic.types'
 
 const WALK_SPEED = 3.1
@@ -14,6 +15,9 @@ const DECELERATION = 20
 const PLAYER_RADIUS = 0.35
 const BASE_FOV = 72
 const IMPACT_DURATION = 0.34
+const MOUSE_SENSITIVITY = 0.002
+const INITIAL_YAW = Math.PI
+const PITCH_LIMIT = THREE.MathUtils.degToRad(85)
 
 const movementKeyCodes = new Set([
   'KeyW',
@@ -34,11 +38,13 @@ type PlayerProps = {
 export function Player({ trafficState, level }: PlayerProps) {
   const body = useRef<RapierRigidBody>(null)
   const keys = useRef(new Set<string>())
-  const { camera } = useThree()
+  const { camera, gl } = useThree()
   const status = useGameStore((state) => state.status)
   const statusRef = useRef(status)
-  const lose = useGameStore((state) => state.lose)
+  const roundId = useGameStore((state) => state.roundId)
   const win = useGameStore((state) => state.win)
+  const yaw = useRef(INITIAL_YAW)
+  const pitch = useRef(0)
   const forward = useRef(new THREE.Vector3())
   const right = useRef(new THREE.Vector3())
   const movement = useRef(new THREE.Vector3())
@@ -51,10 +57,36 @@ export function Player({ trafficState, level }: PlayerProps) {
   statusRef.current = status
 
   useEffect(() => {
-    camera.rotation.set(0, Math.PI, 0)
+    camera.rotation.order = 'YXZ'
+    yaw.current = INITIAL_YAW
+    pitch.current = 0
+    camera.rotation.set(pitch.current, yaw.current, 0)
+  }, [camera, roundId])
+
+  useEffect(() => {
+    camera.rotation.order = 'YXZ'
+
+    const requestLock = () => {
+      if (statusRef.current !== 'playing' || document.pointerLockElement === gl.domElement || typeof gl.domElement.requestPointerLock !== 'function') return
+      const request = gl.domElement.requestPointerLock()
+      if (request) request.catch(() => undefined)
+    }
+    const onPointerLockChange = () => {
+      if (document.pointerLockElement !== gl.domElement) keys.current.clear()
+    }
+    const onMouseMove = (event: MouseEvent) => {
+      if (statusRef.current !== 'playing' || document.pointerLockElement !== gl.domElement) return
+      yaw.current -= event.movementX * MOUSE_SENSITIVITY
+      pitch.current = THREE.MathUtils.clamp(
+        pitch.current - event.movementY * MOUSE_SENSITIVITY,
+        -PITCH_LIMIT,
+        PITCH_LIMIT,
+      )
+    }
 
     const onKeyDown = (event: KeyboardEvent) => {
-      if (statusRef.current === 'playing' && event.code.startsWith('Arrow')) event.preventDefault()
+      if (statusRef.current !== 'playing') return
+      if (event.code.startsWith('Arrow')) event.preventDefault()
       if (movementKeyCodes.has(event.code) || event.code.startsWith('Shift')) keys.current.add(event.code)
     }
     const onKeyUp = (event: KeyboardEvent) => keys.current.delete(event.code)
@@ -66,14 +98,20 @@ export function Player({ trafficState, level }: PlayerProps) {
     window.addEventListener('keyup', onKeyUp)
     window.addEventListener('blur', clearInput)
     document.addEventListener('visibilitychange', clearInput)
+    gl.domElement.addEventListener('click', requestLock)
+    document.addEventListener('pointerlockchange', onPointerLockChange)
+    document.addEventListener('mousemove', onMouseMove)
 
     return () => {
       window.removeEventListener('keydown', onKeyDown)
       window.removeEventListener('keyup', onKeyUp)
       window.removeEventListener('blur', clearInput)
       document.removeEventListener('visibilitychange', clearInput)
+      gl.domElement.removeEventListener('click', requestLock)
+      document.removeEventListener('pointerlockchange', onPointerLockChange)
+      document.removeEventListener('mousemove', onMouseMove)
     }
-  }, [camera])
+  }, [camera, gl])
 
   useEffect(() => {
     keys.current.clear()
@@ -81,11 +119,11 @@ export function Player({ trafficState, level }: PlayerProps) {
 
     if (status === 'lost') {
       impactTime.current = IMPACT_DURATION
-      document.exitPointerLock?.()
+      if (document.pointerLockElement === gl.domElement) document.exitPointerLock?.()
     } else if (status === 'won') {
-      document.exitPointerLock?.()
+      if (document.pointerLockElement === gl.domElement) document.exitPointerLock?.()
     }
-  }, [status])
+  }, [gl, status])
 
   useFrame((_, delta) => {
     if (!body.current) return
@@ -102,6 +140,7 @@ export function Player({ trafficState, level }: PlayerProps) {
       perspectiveCamera.updateProjectionMatrix()
     }
 
+    let impactRoll = camera.rotation.z
     if (impactTime.current > 0) {
       const progress = impactTime.current / IMPACT_DURATION
       const elapsed = IMPACT_DURATION - impactTime.current
@@ -112,10 +151,12 @@ export function Player({ trafficState, level }: PlayerProps) {
         -0.08 * progress,
       )
       camera.position.add(impactOffset.current)
-      camera.rotation.z = Math.sin(elapsed * 27) * 0.18 * progress
-    } else if (Math.abs(camera.rotation.z) > 0.001) {
-      camera.rotation.z = THREE.MathUtils.damp(camera.rotation.z, 0, 12, frameDelta)
+      impactRoll = Math.sin(elapsed * 27) * 0.18 * progress
+    } else if (Math.abs(impactRoll) > 0.001) {
+      impactRoll = THREE.MathUtils.damp(impactRoll, 0, 12, frameDelta)
     }
+
+    camera.rotation.set(pitch.current, yaw.current, impactRoll)
 
     const audioImpulse = gameAudio.consumeCameraImpulse(frameDelta)
     if (audioImpulse > 0) {
@@ -141,12 +182,8 @@ export function Player({ trafficState, level }: PlayerProps) {
     const hasInput = input.lengthSq() > 0
     if (hasInput) {
       input.normalize()
-      forward.current.set(0, 0, -1).applyQuaternion(camera.quaternion)
-      forward.current.y = 0
-      forward.current.normalize()
-      right.current.set(1, 0, 0).applyQuaternion(camera.quaternion)
-      right.current.y = 0
-      right.current.normalize()
+      forward.current.set(-Math.sin(yaw.current), 0, -Math.cos(yaw.current))
+      right.current.set(Math.cos(yaw.current), 0, -Math.sin(yaw.current))
 
       const direction = forward.current.multiplyScalar(input.z).add(right.current.multiplyScalar(input.x))
       const speed = running ? RUN_SPEED : WALK_SPEED
@@ -189,10 +226,9 @@ export function Player({ trafficState, level }: PlayerProps) {
       type="kinematicPosition"
       position={level.playerSpawn}
       colliders={false}
+      collisionGroups={PLAYER_COLLISION_GROUPS}
+      activeCollisionTypes={ACTIVE_COLLISION_TYPES_ALL}
       enabledRotations={[false, false, false]}
-      onCollisionEnter={({ other }) => {
-        if (other.rigidBodyObject?.userData?.isVehicle) lose()
-      }}
       userData={{ isPlayer: true }}
     >
       <CapsuleCollider args={[0.65, PLAYER_RADIUS]} />

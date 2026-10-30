@@ -4,6 +4,20 @@ import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import type { LevelConfig } from '../levels/level.config'
 
+const vietnamStarShape = (() => {
+  const shape = new THREE.Shape()
+  for (let index = 0; index < 10; index += 1) {
+    const angle = -Math.PI / 2 + index * Math.PI / 5
+    const radius = index % 2 === 0 ? 0.13 : 0.055
+    const x = Math.cos(angle) * radius
+    const y = Math.sin(angle) * radius
+    if (index === 0) shape.moveTo(x, y)
+    else shape.lineTo(x, y)
+  }
+  shape.closePath()
+  return shape
+})()
+
 type SignBoardProps = {
   label: string
   color: string
@@ -20,7 +34,7 @@ function SignBoard({ label, color, position, width = 2.65 }: SignBoardProps) {
     if (context) {
       context.clearRect(0, 0, canvas.width, canvas.height)
       context.fillStyle = '#182a2c'
-      context.font = '700 54px Arial, sans-serif'
+      context.font = `${label.length > 9 ? 700 : 800} ${label.length > 9 ? 38 : 50}px Arial, sans-serif`
       context.textAlign = 'center'
       context.textBaseline = 'middle'
       context.fillText(label, canvas.width / 2, canvas.height / 2 + 2)
@@ -41,6 +55,19 @@ function SignBoard({ label, color, position, width = 2.65 }: SignBoardProps) {
         <planeGeometry args={[width - 0.16, 0.48]} />
         <meshBasicMaterial map={texture} transparent toneMapped={false} />
       </mesh>
+    </group>
+  )
+}
+
+function ProjectingSign({ color, position }: { color: string; position: [number, number, number] }) {
+  return (
+    <group position={position} rotation={[0, Math.PI / 2, 0]}>
+      <Box args={[0.08, 1.08, 0.62]} castShadow>
+        <meshStandardMaterial color={color} roughness={0.8} />
+      </Box>
+      <Box args={[0.12, 0.86, 0.08]} position={[0, -0.02, -0.35]}>
+        <meshStandardMaterial color="#5b625e" roughness={0.88} metalness={0.12} />
+      </Box>
     </group>
   )
 }
@@ -87,13 +114,15 @@ function AirConditioner({ x, y, facadeZ }: { x: number; y: number; facadeZ: numb
   )
 }
 
-function StorefrontAwning({ color, facadeZ }: { color: string; facadeZ: number }) {
+function StorefrontAwning({ color, facadeZ, width }: { color: string; facadeZ: number; width: number }) {
+  const awningWidth = width - 0.55
+
   return (
     <group position={[0, 2.05, facadeZ - 0.38]}>
-      <Box args={[4.35, 0.12, 0.72]} rotation={[0.16, 0, 0]} castShadow>
+      <Box args={[awningWidth, 0.12, 0.72]} rotation={[0.16, 0, 0]} castShadow>
         <meshStandardMaterial color={color} roughness={0.82} />
       </Box>
-      {[-1.72, 1.72].map((x) => (
+      {[-awningWidth / 2 + 0.12, awningWidth / 2 - 0.12].map((x) => (
         <Cylinder key={x} args={[0.035, 0.035, 0.58, 6]} position={[x, -0.24, -0.25]}>
           <meshStandardMaterial color="#626a66" roughness={0.86} metalness={0.12} />
         </Cylinder>
@@ -116,38 +145,69 @@ function PottedPlant({ position }: { position: [number, number, number] }) {
 }
 
 function ShopProps({ label, facadeZ }: { label: string; facadeZ: number }) {
-  if (label === 'CÀ PHÊ' || label === 'PHỞ' || label === 'BÚN' || label === 'CƠM' || label === 'BÁNH MÌ') {
+  if (['CÀ PHÊ', 'PHỞ BÒ', 'PHỞ GÀ', 'BÚN CHẢ', 'CƠM BÌNH DÂN', 'BÁNH MÌ', 'TRÀ ĐÁ'].includes(label)) {
     return (
       <group position={[0, 0, facadeZ - 0.58]}>
-        <Cylinder args={[0.28, 0.28, 0.7, 8]} position={[-1.15, 0.35, 0]}>
+        <Cylinder args={[0.26, 0.26, 0.66, 8]} position={[-1.15, 0.33, 0]}>
           <meshStandardMaterial color="#a96d4f" roughness={0.9} />
         </Cylinder>
-        <Cylinder args={[0.28, 0.28, 0.7, 8]} position={[1.25, 0.35, 0]}>
+        <Cylinder args={[0.26, 0.26, 0.66, 8]} position={[1.25, 0.33, 0]}>
           <meshStandardMaterial color="#a96d4f" roughness={0.9} />
         </Cylinder>
-        <Box args={[1.65, 0.1, 0.72]} position={[0.05, 0.78, 0]}>
+        <Box args={[1.65, 0.1, 0.72]} position={[0.05, 0.73, 0]}>
           <meshStandardMaterial color="#6f5340" roughness={0.92} />
         </Box>
         <Cylinder args={[0.17, 0.22, 0.32, 8]} position={[-1.85, 0.16, 0.02]}>
           <meshStandardMaterial color="#557773" roughness={0.9} />
         </Cylinder>
+        {[-1.65, -0.6, 0.62, 1.62].map((x) => (
+          <group key={x} position={[x, 0, 0.32]}>
+            <Cylinder args={[0.13, 0.16, 0.42, 8]} position={[0, 0.21, 0]}>
+              <meshStandardMaterial color="#c65c48" roughness={0.9} />
+            </Cylinder>
+            <Cylinder args={[0.17, 0.17, 0.045, 8]} position={[0, 0.44, 0]}>
+              <meshStandardMaterial color="#3f6864" roughness={0.9} />
+            </Cylinder>
+          </group>
+        ))}
       </group>
     )
   }
 
-  if (label === 'SỬA XE') {
+  if (label === 'SỬA XE MÁY' || label === 'RỬA XE') {
     return (
       <group position={[0, 0, facadeZ - 0.45]}>
         {[-1.7, -1.25, -0.8].map((x) => (
-          <Box key={x} args={[0.34, 0.34, 0.46]} position={[x, 0.18, 0]}>
-            <meshStandardMaterial color="#9c7043" roughness={0.94} />
-          </Box>
+          <Cylinder key={x} args={[0.22, 0.22, 0.12, 12]} rotation={[Math.PI / 2, 0, 0]} position={[x, 0.23, 0]}>
+            <meshStandardMaterial color="#252b2b" roughness={0.96} />
+          </Cylinder>
         ))}
         <Box args={[0.1, 1.4, 0.1]} position={[1.75, 0.7, 0]}>
           <meshStandardMaterial color="#626a66" roughness={0.82} metalness={0.15} />
         </Box>
         <Box args={[0.8, 0.08, 0.08]} position={[1.75, 1.33, 0]}>
           <meshStandardMaterial color="#626a66" roughness={0.82} metalness={0.15} />
+        </Box>
+        <Box args={[0.62, 0.44, 0.42]} position={[1.16, 0.24, 0.02]}>
+          <meshStandardMaterial color="#9c7043" roughness={0.94} />
+        </Box>
+      </group>
+    )
+  }
+
+  if (label === 'TẠP HÓA') {
+    return (
+      <group position={[0, 0, facadeZ - 0.44]}>
+        {[-1.75, -1.2, -0.65].map((x, index) => (
+          <Box key={x} args={[0.42, 0.36 + index * 0.08, 0.48]} position={[x, 0.18 + index * 0.04, 0]}>
+            <meshStandardMaterial color={index % 2 === 0 ? '#b77b48' : '#687f70'} roughness={0.94} />
+          </Box>
+        ))}
+        <Box args={[0.1, 1.35, 0.42]} position={[1.45, 0.68, 0]}>
+          <meshStandardMaterial color="#77756b" roughness={0.88} metalness={0.12} />
+        </Box>
+        <Box args={[0.72, 0.08, 0.46]} position={[1.45, 1.35, 0]}>
+          <meshStandardMaterial color="#737b72" roughness={0.88} metalness={0.12} />
         </Box>
       </group>
     )
@@ -180,59 +240,63 @@ type ShopHouseProps = {
 }
 
 function ShopHouse({ x, z, bodyColor, roofColor, signColor, label, heightBias = 0, hasBalcony = false }: ShopHouseProps) {
-  const height = 4.7 + (Math.abs(x) % 3) * 0.45 + heightBias
+  const variation = Math.abs(Math.round(x * 10)) % 4
+  const width = 3.85 + variation * 0.22
+  const depth = 3.45
+  const height = 5.4 + (variation % 3) * 0.48 + heightBias
   const facing = z > 0 ? 0 : Math.PI
-  const facadeZ = -1.46
+  const facadeZ = -depth / 2 - 0.02
   const hasTank = Math.abs(x) % 3 === 0
-  const windowRows = height > 5.3 ? [3.1, 4.45] : [3.25]
+  const windowRows = height > 6.25 ? [3.2, 4.62, 6.04] : [3.25, 4.7]
 
   return (
     <group position={[x, 0, z]} rotation={[0, facing, 0]}>
-      <Box args={[5.2, height, 2.8]} position={[0, height / 2, 0]} castShadow receiveShadow>
+      <Box args={[width, height, depth]} position={[0, height / 2, 0]} castShadow receiveShadow>
         <meshStandardMaterial color={bodyColor} roughness={0.9} />
       </Box>
-      <Box args={[5.4, 0.22, 3]} position={[0, height + 0.1, 0]} castShadow>
+      <Box args={[width + 0.22, 0.22, depth + 0.2]} position={[0, height + 0.1, 0]} castShadow>
         <meshStandardMaterial color={roofColor} roughness={0.86} />
       </Box>
-      <Box args={[5.2, 0.24, 2.84]} position={[0, 0.16, 0]}>
+      <Box args={[width, 0.24, depth]} position={[0, 0.16, 0]}>
         <meshStandardMaterial color="#8a6a58" roughness={0.96} />
       </Box>
-      <Box args={[5.35, 0.16, 0.85]} position={[0, 2.15, -1.72]} castShadow>
+      <Box args={[width + 0.12, 0.16, 0.85]} position={[0, 2.15, facadeZ - 0.26]} castShadow>
         <meshStandardMaterial color={roofColor} roughness={0.8} />
       </Box>
 
-      <Box args={[4.58, 1.48, 0.08]} position={[-0.38, 0.82, facadeZ]}>
+      <Box args={[width - 0.62, 1.48, 0.08]} position={[-0.12, 0.82, facadeZ]}>
         <meshStandardMaterial color="#3c5b60" roughness={0.34} metalness={0.03} />
       </Box>
-      {[-2.38, -1.15, 0.08, 1.3].map((frameX) => (
+      {[-width / 2 + 0.16, -width * 0.19, width * 0.18, width / 2 - 0.16].map((frameX) => (
         <Box key={frameX} args={[0.07, 1.58, 0.1]} position={[frameX, 0.82, facadeZ - 0.03]}>
           <meshStandardMaterial color="#5f5d53" roughness={0.78} metalness={0.12} />
         </Box>
       ))}
-      <Box args={[0.9, 1.58, 0.09]} position={[1.55, 0.82, facadeZ]}>
+      <Box args={[0.72, 1.58, 0.09]} position={[width * 0.33, 0.82, facadeZ]}>
         <meshStandardMaterial color="#65493b" roughness={0.86} />
       </Box>
-      <Box args={[0.14, height, 0.1]} position={[-2.52, height / 2, facadeZ + 0.02]}>
+      <Box args={[0.14, height, 0.1]} position={[-width / 2 + 0.05, height / 2, facadeZ + 0.02]}>
         <meshStandardMaterial color="#9b604a" roughness={0.86} />
       </Box>
 
-      <SignBoard label={label} color={signColor} position={[-0.65, height - 0.78, facadeZ - 0.08]} />
-      <StorefrontAwning color={signColor} facadeZ={facadeZ} />
+      <SignBoard label={label} color={signColor} width={label.length > 9 ? 3.25 : 2.82} position={[-0.1, height - 0.78, facadeZ - 0.08]} />
+      <ProjectingSign color={signColor} position={[width / 2 + 0.12, 2.75, facadeZ - 0.04]} />
+      <StorefrontAwning color={signColor} facadeZ={facadeZ} width={width} />
       <ShopProps label={label} facadeZ={facadeZ} />
-      <PottedPlant position={[2.18, 0, facadeZ - 0.66]} />
-      <AirConditioner x={1.75} y={height - 1.05} facadeZ={facadeZ} />
+      <PottedPlant position={[width / 2 - 0.36, 0, facadeZ - 0.66]} />
+      <AirConditioner x={width / 2 - 0.7} y={height - 1.05} facadeZ={facadeZ} />
 
       {windowRows.map((windowY, row) => (
         <group key={windowY}>
-          {[-1.45, 0.05].map((windowX) => (
+          {[-width * 0.26, width * 0.13].map((windowX) => (
             <group key={windowX}>
-              <Box args={[1.02, 1.12, 0.08]} position={[windowX, windowY, facadeZ]}>
+              <Box args={[0.86, 1.12, 0.08]} position={[windowX, windowY, facadeZ]}>
                 <meshStandardMaterial color="#78a0a4" roughness={0.36} metalness={0.04} />
               </Box>
-              <Box args={[1.08, 0.08, 0.12]} position={[windowX, windowY - 0.6, facadeZ - 0.04]}>
+              <Box args={[0.92, 0.08, 0.12]} position={[windowX, windowY - 0.6, facadeZ - 0.04]}>
                 <meshStandardMaterial color="#65675e" roughness={0.8} />
               </Box>
-              {row === 0 && <Box args={[1.1, 0.08, 0.12]} position={[windowX, windowY + 0.6, facadeZ - 0.04]}>
+              {row === 0 && <Box args={[0.92, 0.08, 0.12]} position={[windowX, windowY + 0.6, facadeZ - 0.04]}>
                 <meshStandardMaterial color="#65675e" roughness={0.8} />
               </Box>}
             </group>
@@ -279,18 +343,22 @@ function UtilityPole({ x, z, transformer = false, flag = false }: { x: number; z
           <Box args={[0.82, 0.48, 0.04]}>
             <meshStandardMaterial color="#b8443e" roughness={0.84} />
           </Box>
-          <Cylinder args={[0.13, 0.13, 0.025, 5]} rotation={[Math.PI / 2, 0, 0]} position={[0, 0, -0.035]}>
-            <meshStandardMaterial color="#f2cf5b" roughness={0.72} emissive="#5c4613" emissiveIntensity={0.12} />
-          </Cylinder>
+          <mesh position={[0, 0, -0.035]}>
+            <shapeGeometry args={[vietnamStarShape]} />
+            <meshStandardMaterial color="#f2cf5b" roughness={0.72} emissive="#5c4613" emissiveIntensity={0.12} side={THREE.DoubleSide} />
+          </mesh>
         </group>
       )}
     </group>
   )
 }
 
-function StreetTree({ x, z }: { x: number; z: number }) {
+function StreetTree({ x, z, scale = 1, canopyColor = '#5d8760' }: { x: number; z: number; scale?: number; canopyColor?: string }) {
   return (
-    <group position={[x, 0, z]}>
+    <group position={[x, 0, z]} scale={[scale, scale, scale]}>
+      <Box args={[1.12, 0.035, 1.12]} position={[0, 0.32, 0]}>
+        <meshStandardMaterial color="#83735c" roughness={1} />
+      </Box>
       <Cylinder args={[0.18, 0.24, 2.4, 7]} position={[0, 1.2, 0]}>
         <meshStandardMaterial color="#6f4e38" roughness={1} />
       </Cylinder>
@@ -301,7 +369,7 @@ function StreetTree({ x, z }: { x: number; z: number }) {
         <meshStandardMaterial color="#6f4e38" roughness={1} />
       </Cylinder>
       <Icosahedron args={[1.18, 1]} position={[0, 3, 0]} castShadow>
-        <meshStandardMaterial color="#5d8760" roughness={1} flatShading />
+        <meshStandardMaterial color={canopyColor} roughness={1} flatShading />
       </Icosahedron>
       <Icosahedron args={[0.75, 1]} position={[0.65, 3.45, 0.1]} castShadow>
         <meshStandardMaterial color="#78a06d" roughness={1} flatShading />
@@ -435,23 +503,19 @@ function DistantBackdrop({ backdropZ, roadLength }: { backdropZ: number; roadLen
 
 export function Environment({ level }: { level: LevelConfig }) {
   const shopPalette = [
-    ['#b87961', '#705548', '#dfb85f'],
-    ['#78928c', '#4e6765', '#cd8557'],
-    ['#c2a36b', '#786047', '#719476'],
-    ['#92768b', '#5b4a5e', '#d7b765'],
+    ['#aa8068', '#63534a', '#cf493d'],
+    ['#78918b', '#4e5e5d', '#d3ad3d'],
+    ['#b49b6c', '#6b594a', '#3f7a78'],
+    ['#9a877f', '#5a5651', '#3a6490'],
   ]
-  const shopZ = level.roadHalfWidth + level.sidewalkWidth + 1.4
-  const streetZ = level.roadHalfWidth + level.sidewalkWidth - 0.8
+  const shopZ = level.roadHalfWidth + level.sidewalkWidth + 1.7
+  const streetZ = level.roadHalfWidth + level.sidewalkWidth - 0.7
   const scooterZ = level.roadHalfWidth + level.sidewalkWidth + 0.1
-  const shopXs = level.environmentPreset === 'smallStreet'
-    ? [-13, -6.5, 0, 6.5, 13]
-    : level.environmentPreset === 'arterial'
-      ? [-14, -7, 0, 7, 14]
-      : [-12, -6, 0, 6, 12]
+  const shopXs = [-0.43, -0.29, -0.14, 0.02, 0.18, 0.36].map((ratio) => ratio * level.roadLength)
   const heightBias = level.environmentPreset === 'smallStreet' ? -0.35 : level.environmentPreset === 'arterial' ? 0.45 : 0.35
   const extraScooters = level.environmentPreset === 'smallStreet' || level.environmentPreset === 'motorcycle'
-  const northLabels = ['TẠP HÓA', 'CÀ PHÊ', 'PHỞ', 'SỬA XE', 'CƠM']
-  const southLabels = ['BÚN', 'BÁNH MÌ', 'CÀ PHÊ', 'SỬA XE', 'CẮT TÓC']
+  const northLabels = ['TẠP HÓA', 'PHỞ BÒ', 'SỬA XE MÁY', 'CÀ PHÊ', 'CƠM BÌNH DÂN', 'CẮT TÓC']
+  const southLabels = ['BÚN CHẢ', 'TRÀ ĐÁ', 'RỬA XE', 'PHỞ GÀ', 'BÁNH MÌ', 'CÀ PHÊ']
   const cableEnd = level.roadLength / 2 + 1.2
 
   return (
@@ -472,7 +536,7 @@ export function Environment({ level }: { level: LevelConfig }) {
               heightBias={heightBias}
               hasBalcony={index === 0 || index === 3}
             />
-            {index !== 2 && (
+            {index !== 2 && index !== 5 && (
               <ShopHouse
                 x={x + 0.35}
                 z={-shopZ}
@@ -494,16 +558,23 @@ export function Environment({ level }: { level: LevelConfig }) {
           <UtilityPole x={x + 1.2} z={-streetZ} transformer={index === 2} flag={index === 2} />
         </group>
       ))}
-      <Line points={[[-cableEnd, 6.65, streetZ], [0, 6.95, streetZ], [cableEnd, 6.65, streetZ]]} color="#3e4d4b" lineWidth={1} />
-      <Line points={[[-cableEnd, 6.35, streetZ + 0.35], [0, 6.65, streetZ + 0.35], [cableEnd, 6.35, streetZ + 0.35]]} color="#5a6560" lineWidth={0.8} />
-      <Line points={[[-cableEnd, 6.08, streetZ - 0.25], [0, 6.34, streetZ - 0.25], [cableEnd, 6.08, streetZ - 0.25]]} color="#616b65" lineWidth={0.65} />
-      <Line points={[[-cableEnd, 6.4, -streetZ], [0, 6.7, -streetZ], [cableEnd, 6.4, -streetZ]]} color="#3e4d4b" lineWidth={1} />
-      <Line points={[[-cableEnd, 6.13, -streetZ - 0.33], [0, 6.45, -streetZ - 0.33], [cableEnd, 6.13, -streetZ - 0.33]]} color="#5a6560" lineWidth={0.8} />
+      <Line points={[[-cableEnd, 6.65, streetZ], [-cableEnd * 0.38, 6.9, streetZ + 0.16], [cableEnd * 0.12, 6.54, streetZ - 0.12], [cableEnd, 6.72, streetZ + 0.08]]} color="#3e4d4b" lineWidth={1} />
+      <Line points={[[-cableEnd, 6.35, streetZ + 0.35], [-cableEnd * 0.42, 6.55, streetZ + 0.25], [cableEnd * 0.26, 6.29, streetZ + 0.46], [cableEnd, 6.42, streetZ + 0.3]]} color="#5a6560" lineWidth={0.8} />
+      <Line points={[[-cableEnd, 6.08, streetZ - 0.25], [-cableEnd * 0.18, 6.28, streetZ - 0.08], [cableEnd * 0.48, 6.02, streetZ - 0.34], [cableEnd, 6.18, streetZ - 0.2]]} color="#616b65" lineWidth={0.65} />
+      <Line points={[[-cableEnd, 6.4, -streetZ], [-cableEnd * 0.3, 6.62, -streetZ - 0.2], [cableEnd * 0.3, 6.3, -streetZ + 0.12], [cableEnd, 6.5, -streetZ - 0.08]]} color="#3e4d4b" lineWidth={1} />
+      <Line points={[[-cableEnd, 6.13, -streetZ - 0.33], [-cableEnd * 0.36, 6.4, -streetZ - 0.18], [cableEnd * 0.5, 6.06, -streetZ - 0.42], [cableEnd, 6.24, -streetZ - 0.28]]} color="#5a6560" lineWidth={0.8} />
+      {shopXs.filter((_, index) => index % 2 === 0).map((x) => (
+        <Line key={`service-drop-${x}`} points={[[x, 6.5, streetZ], [x + 0.24, 4.3, streetZ + 0.35], [x + 0.1, 3.35, streetZ + 1.25]]} color="#59645f" lineWidth={0.5} />
+      ))}
 
-      {[-level.roadLength * 0.42, -level.roadLength * 0.17, level.roadLength * 0.17, level.roadLength * 0.42].map((x) => (
+      {[
+        [-level.roadLength * 0.37, streetZ - 0.4, 1.08, '#5d8760'],
+        [level.roadLength * 0.07, -streetZ - 0.5, 0.86, '#4e7857'],
+        [level.roadLength * 0.34, streetZ - 0.34, 1.18, '#6c8d5f'],
+      ].map(([x, z, scale, canopyColor], index) => (
         <group key={`street-${x}`}>
-          <StreetTree x={x} z={streetZ - 0.35} />
-          <StreetLamp x={x + 1.25} z={streetZ - 0.4} />
+          <StreetTree x={x as number} z={z as number} scale={scale as number} canopyColor={canopyColor as string} />
+          {index !== 1 && <StreetLamp x={(x as number) + 1.25} z={(z as number) - 0.05} />}
         </group>
       ))}
       {(extraScooters ? [-level.roadLength * 0.38, -level.roadLength * 0.08, level.roadLength * 0.25, level.roadLength * 0.42] : [-10, 2, 12]).map((x, index) => (

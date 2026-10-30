@@ -1,5 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
-import type { PointerLockControls as PointerLockControlsImpl } from 'three-stdlib'
+import { lazy, Suspense, useCallback, useEffect, useRef } from 'react'
 import { gameAudio } from '../game/audio/AudioManager'
 import { LEVELS } from '../game/levels/level.config'
 import { useGameStore } from '../store/gameStore'
@@ -19,7 +18,7 @@ function canUsePointerLock() {
 }
 
 function App() {
-  const controls = useRef<PointerLockControlsImpl>(null)
+  const canvas = useRef<HTMLCanvasElement | null>(null)
   const status = useGameStore((state) => state.status)
   const start = useGameStore((state) => state.start)
   const restart = useGameStore((state) => state.restart)
@@ -28,14 +27,8 @@ function App() {
   const setResultForDebug = useGameStore((state) => state.setResultForDebug)
   const levelIndex = useGameStore((state) => state.levelIndex)
   const pointerLockAvailable = canUsePointerLock()
-  const [sceneReady, setSceneReady] = useState(false)
-  const sceneRequestedLock = useRef(false)
-  const handleSceneReady = useCallback(() => {
-    setSceneReady(true)
-    if (sceneRequestedLock.current) {
-      sceneRequestedLock.current = false
-      controls.current?.lock()
-    }
+  const handleCanvasReady = useCallback((element: HTMLCanvasElement) => {
+    canvas.current = element
   }, [])
 
   useEffect(() => {
@@ -50,12 +43,12 @@ function App() {
   }, [setLevelForDebug, setResultForDebug])
 
   useEffect(() => {
-    if (status !== 'playing') controls.current?.unlock()
+    if (status !== 'playing' && document.pointerLockElement === canvas.current) document.exitPointerLock()
   }, [status])
 
   useEffect(() => {
     const releasePointerLock = () => {
-      if (document.visibilityState !== 'visible') controls.current?.unlock()
+      if (document.visibilityState !== 'visible' && document.pointerLockElement === canvas.current) document.exitPointerLock()
     }
     window.addEventListener('blur', releasePointerLock)
     document.addEventListener('visibilitychange', releasePointerLock)
@@ -71,12 +64,10 @@ function App() {
     gameAudio.beginRound()
     action()
     // Embedded previews can expose the API without allowing the document to own pointer lock.
-    // A normal standalone deployment is top-level and can lock from this user gesture.
-    if (pointerLockAvailable && controls.current) {
-      controls.current?.lock()
-    } else if (pointerLockAvailable && !sceneReady) {
-      // The scene is lazy-loaded, so preserve the intent if the first click wins the race.
-      sceneRequestedLock.current = true
+    // A normal standalone deployment is top-level and can lock the actual WebGL canvas from this gesture.
+    if (pointerLockAvailable) {
+      const request = canvas.current?.requestPointerLock()
+      if (request) request.catch(() => undefined)
     }
   }
 
@@ -84,7 +75,7 @@ function App() {
     <main className="game-shell">
       <SceneErrorBoundary>
         <Suspense fallback={null}>
-          <GameScene controls={controls} pointerLockAvailable={pointerLockAvailable} onReady={handleSceneReady} />
+          <GameScene onCanvasReady={handleCanvasReady} />
         </Suspense>
       </SceneErrorBoundary>
 

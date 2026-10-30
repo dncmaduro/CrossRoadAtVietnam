@@ -56,9 +56,9 @@ export const TRAFFIC_TUNING = {
   },
 } as const
 
-export const CAR_COLORS = ['#d95c4f', '#e4b942', '#4d81a8', '#e7e2d3', '#6f9b7d']
-export const MOTORCYCLE_COLORS = ['#1c2730', '#c85d4c', '#2f6e73', '#d0a93f', '#735b7e']
-export const LARGE_VEHICLE_COLORS = ['#d0a33f', '#4b7e86', '#9b5947', '#657f68']
+export const CAR_COLORS = ['#e7e4dc', '#bcc3c3', '#2b3438', '#596771', '#a85d57', '#d8d3c7']
+export const MOTORCYCLE_COLORS = ['#c6c9c2', '#1c2730', '#c85d4c', '#2f6e73', '#735b7e', '#53635e']
+export const LARGE_VEHICLE_COLORS = ['#4b7e86', '#d0a33f', '#a84e47', '#657f68', '#e7e1d3']
 
 function sampleRange(range: [number, number], seed: number) {
   const fraction = ((seed * 37 + 17) % 100) / 100
@@ -77,11 +77,22 @@ export function pickVehicleKind(profile: TrafficProfile, laneIndex: number, vehi
 }
 
 export function getVehicleDimensions(kind: VehicleKind, style?: VehicleStyle) {
-  if (kind === 'motorcycle') return { width: 0.56, length: 1.45 }
-  if (kind === 'bus') return { width: 1.55, length: 5.2 }
-  if (kind === 'truck') return { width: 1.6, length: 4.5 }
-  if (style === 'compactEv') return { width: 1.16, length: 2.4 }
-  return { width: 1.15, length: 2.7 }
+  if (kind === 'motorcycle') {
+    if (style === 'underbone') return { width: 0.69, length: 1.9 }
+    if (style === 'sportScooter') return { width: 0.69, length: 1.88 }
+    return { width: 0.69, length: 1.87 }
+  }
+  if (kind === 'bus') return { width: 1.65, length: 5.6 }
+  if (kind === 'truck') return { width: 1.58, length: 4.45 }
+  if (style === 'compactEv') return { width: 1.42, length: 2.9 }
+  return { width: 1.44, length: 3.7 }
+}
+
+function pickMotorcycleStyle(seed: number): MotorcycleStyle {
+  const roll = (seed * 17 + 5) % 10
+  if (roll < 4) return 'scooter'
+  if (roll < 7) return 'underbone'
+  return 'sportScooter'
 }
 
 export function createVehicleConfigs(level: LevelConfig): VehicleConfig[] {
@@ -95,8 +106,8 @@ export function createVehicleConfigs(level: LevelConfig): VehicleConfig[] {
       const motorcycle = kind === 'motorcycle'
       const large = kind === 'bus' || kind === 'truck'
       const style = motorcycle
-        ? id % 3 === 0 ? 'sportScooter' as const : id % 3 === 1 ? 'scooter' as const : 'underbone' as const
-        : kind === 'car' ? (id % 3 === 0 ? 'compactEv' as const : 'sedan' as const) : undefined
+        ? pickMotorcycleStyle(id + lane.index)
+        : kind === 'car' ? (id % 4 === 0 ? 'compactEv' as const : 'sedan' as const) : undefined
       const dimensions = getVehicleDimensions(kind, style)
       const speed = sampleRange(profile.speedRange, id + lane.index * 3)
       const aggression = large ? sampleRange([profile.aggressionRange[0] * 0.55, profile.aggressionRange[1] * 0.8], id * 2 + lane.index) : sampleRange(profile.aggressionRange, id * 2 + lane.index)
@@ -192,8 +203,8 @@ export function createPathVehicleConfigs(level: LevelConfig): PathVehicleConfig[
     const path = createPathForIndex(index, intersection.pathLength, turn)
     const kind = pickVehicleKind(profile, 10 + index, index)
     const style = kind === 'motorcycle'
-      ? index % 3 === 0 ? 'sportScooter' as const : index % 3 === 1 ? 'scooter' as const : 'underbone' as const
-      : kind === 'car' ? (index % 3 === 0 ? 'compactEv' as const : 'sedan' as const) : undefined
+      ? pickMotorcycleStyle(index + 10)
+      : kind === 'car' ? (index % 4 === 0 ? 'compactEv' as const : 'sedan' as const) : undefined
     const dimensions = getVehicleDimensions(kind, style)
     const speed = sampleRange(profile.speedRange, index + 19) * (path.turnType === 'straight' ? 1 : 0.84)
     const visualConfig = {

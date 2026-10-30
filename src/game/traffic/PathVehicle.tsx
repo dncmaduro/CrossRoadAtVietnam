@@ -1,13 +1,13 @@
-import { useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { CuboidCollider, RigidBody, type RapierRigidBody } from '@react-three/rapier'
 import { useGameStore } from '../../store/gameStore'
 import * as THREE from 'three'
 import type { IntersectionRuntime } from '../intersection/intersection.runtime'
 import type { PathVehicleConfig } from '../intersection/intersection.types'
-import { CAR_COLORS, LARGE_VEHICLE_COLORS, MOTORCYCLE_COLORS } from './traffic.config'
+import { ACTIVE_COLLISION_TYPES_ALL, didVehicleHitPlayer, TRAFFIC_COLLISION_GROUPS } from './trafficPhysics'
 import type { PlayerTrafficState, TrafficSnapshot } from './traffic.types'
-import { VehicleModel } from './Vehicle'
+import { getVehicleColor, VehicleModel } from './Vehicle'
 
 type PathVehicleProps = {
   config: PathVehicleConfig
@@ -38,31 +38,34 @@ function samplePath(config: PathVehicleConfig, progress: number, position: THREE
   ).normalize()
 }
 
-function getPalette(kind: PathVehicleConfig['kind']) {
-  if (kind === 'motorcycle') return MOTORCYCLE_COLORS
-  if (kind === 'bus' || kind === 'truck') return LARGE_VEHICLE_COLORS
-  return CAR_COLORS
-}
-
 export function PathVehicle({ config, getTraffic, onUpdate, playerState, intersectionRuntime }: PathVehicleProps) {
   const body = useRef<RapierRigidBody>(null)
   const visuals = useRef<THREE.Group>(null)
   const wheelRefs = useRef<Array<THREE.Mesh | null>>([])
   const nextTranslation = useRef({ x: 0, y: 0, z: 0 })
+  const nextRotation = useRef({ x: 0, y: 0, z: 0, w: 1 })
   const position = useRef(new THREE.Vector2())
   const tangent = useRef(new THREE.Vector2(1, 0))
   const runtime = useRef<PathRuntime>({ active: false, wait: config.spawnDelay, progress: 0, speed: 0 })
   const status = useGameStore((state) => state.status)
+  const lose = useGameStore((state) => state.lose)
+  const collisionTriggered = useRef(false)
   const y = config.kind === 'motorcycle' ? 0.42 : config.kind === 'bus' || config.kind === 'truck' ? 0.9 : 0.65
-  const palette = getPalette(config.kind)
-  const color = palette[config.id % palette.length]
+  const color = getVehicleColor(config.visualConfig)
 
-  const setNextTranslation = (x: number, z: number) => {
+  const setNextTransform = (x: number, z: number, heading = 0) => {
     nextTranslation.current.x = x
     nextTranslation.current.y = y
     nextTranslation.current.z = z
     body.current?.setNextKinematicTranslation(nextTranslation.current)
+    nextRotation.current.y = Math.sin(heading / 2)
+    nextRotation.current.w = Math.cos(heading / 2)
+    body.current?.setNextKinematicRotation(nextRotation.current)
   }
+
+  useEffect(() => {
+    if (status !== 'playing') collisionTriggered.current = false
+  }, [status])
 
   useFrame((_, delta) => {
     const rigidBody = body.current
@@ -84,7 +87,7 @@ export function PathVehicle({ config, getTraffic, onUpdate, playerState, interse
         state.active = true
         state.progress = 0
         state.speed = config.speed
-        setNextTranslation(config.path.start[0], config.path.start[1])
+        setNextTransform(config.path.start[0], config.path.start[1])
       }
       if (visuals.current) visuals.current.visible = false
       onUpdate(config.id, config.path.start[0], config.path.start[1], 0, false, config.path.id)
@@ -120,13 +123,27 @@ export function PathVehicle({ config, getTraffic, onUpdate, playerState, interse
       state.progress = 0
       state.speed = 0
       if (visuals.current) visuals.current.visible = false
-      setNextTranslation(config.path.start[0], config.path.start[1])
+      setNextTransform(config.path.start[0], config.path.start[1])
       onUpdate(config.id, config.path.start[0], config.path.start[1], 0, false, config.path.id)
       return
     }
 
-    setNextTranslation(position.current.x, position.current.y)
-    if (visuals.current) visuals.current.rotation.y = Math.atan2(-tangent.current.y, tangent.current.x)
+    const heading = Math.atan2(-tangent.current.y, tangent.current.x)
+    if (!collisionTriggered.current && didVehicleHitPlayer({
+      previous: { x: rigidBody.translation().x, z: rigidBody.translation().z, heading },
+      next: { x: position.current.x, z: position.current.y, heading },
+      length: config.length,
+      width: config.width,
+      playerState,
+      frameDelta,
+    })) {
+      collisionTriggered.current = true
+      lose()
+      return
+    }
+
+    setNextTransform(position.current.x, position.current.y, heading)
+    if (visuals.current) visuals.current.rotation.y = heading
     onUpdate(config.id, position.current.x, position.current.y, state.speed, true, config.path.id)
     wheelRefs.current.forEach((wheel) => {
       if (wheel) wheel.rotation.z += state.speed * frameDelta * 1.2
@@ -139,6 +156,8 @@ export function PathVehicle({ config, getTraffic, onUpdate, playerState, interse
       type="kinematicPosition"
       position={[config.path.start[0], y, config.path.start[1]]}
       colliders={false}
+      collisionGroups={TRAFFIC_COLLISION_GROUPS}
+      activeCollisionTypes={ACTIVE_COLLISION_TYPES_ALL}
       userData={{ isVehicle: true, vehicleId: config.id }}
       enabledRotations={[false, false, false]}
     >

@@ -90,6 +90,35 @@ button:focus-visible {
   transform: translateY(20vh);
 }
 
+.start-actions {
+  display: grid;
+  justify-items: center;
+  gap: 0.65rem;
+}
+
+.button-secondary {
+  border: 1px solid rgba(20, 34, 38, 0.42);
+  padding: 0.55rem 1.15rem;
+  background: rgba(246, 243, 233, 0.42);
+  color: #142226;
+  font-size: 0.9rem;
+}
+
+.button-secondary:hover {
+  border-color: #2f5554;
+  background: rgba(246, 243, 233, 0.78);
+  color: #142226;
+}
+
+.overlay-help .overlay-copy {
+  width: min(100% - 2rem, 36rem);
+  transform: translateY(1vh);
+}
+
+.overlay-help h1 {
+  font-size: clamp(2.5rem, 5vw, 4.4rem);
+}
+
 .overlay-result {
   background: rgba(26, 40, 43, 0.44);
   color: #fbf7e9;
@@ -146,6 +175,131 @@ h1 {
 
 .pointer-lock-hint {
   color: #7a4d21;
+}
+
+.help-content {
+  display: grid;
+  width: 100%;
+  gap: 1rem 2rem;
+  margin: 0.15rem 0 0.25rem;
+}
+
+.instruction-group {
+  display: grid;
+  justify-items: center;
+  gap: 0.45rem;
+}
+
+.instruction-label {
+  color: #395154;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.instruction-movement,
+.instruction-look,
+.instruction-objective {
+  grid-column: 1 / -1;
+}
+
+.movement-options {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+}
+
+.key-option {
+  display: grid;
+  justify-items: center;
+}
+
+.instruction-or {
+  color: #56716e;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: lowercase;
+}
+
+.key-layout {
+  display: grid;
+  grid-template-columns: repeat(3, 2.25rem);
+  grid-template-rows: repeat(2, 2rem);
+  gap: 0.3rem;
+}
+
+.key-layout kbd:first-child {
+  grid-column: 2;
+}
+
+kbd {
+  display: inline-grid;
+  min-width: 2.25rem;
+  height: 2rem;
+  place-items: center;
+  padding: 0.2rem 0.4rem;
+  border: 1px solid rgba(20, 34, 38, 0.38);
+  border-bottom-width: 3px;
+  border-radius: 0.35rem;
+  background: rgba(246, 243, 233, 0.88);
+  box-shadow: 0 1px 0 rgba(20, 34, 38, 0.12);
+  color: #142226;
+  font: 700 0.82rem/1 ui-sans-serif, system-ui, sans-serif;
+}
+
+.key-wide {
+  min-width: 4rem;
+}
+
+.mouse-look {
+  display: grid;
+  place-items: center;
+  height: 4.15rem;
+}
+
+.mouse-visual {
+  width: 9.4rem;
+  height: 5.5rem;
+  overflow: visible;
+}
+
+.mouse-body {
+  fill: rgba(246, 243, 233, 0.72);
+  stroke: #142226;
+  stroke-width: 2;
+}
+
+.mouse-divider,
+.mouse-arrow {
+  fill: none;
+  stroke: #395154;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
+}
+
+.mouse-arrow {
+  stroke: #56716e;
+}
+
+.mouse-wheel {
+  fill: #395154;
+}
+
+.instruction-shortcuts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-column: 1 / -1;
+  gap: 2rem;
+}
+
+.instruction-objective p {
+  margin: 0;
+  color: #1f4143;
+  font-size: 0.84rem;
+  font-weight: 700;
 }
 
 .overlay-result .controls {

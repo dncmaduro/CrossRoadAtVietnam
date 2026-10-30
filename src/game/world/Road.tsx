@@ -1,5 +1,5 @@
 import { useLayoutEffect, useMemo, useRef } from 'react'
-import { Box } from '@react-three/drei'
+import { Box, Cylinder } from '@react-three/drei'
 import * as THREE from 'three'
 import { getLaneConfigs, type LevelConfig } from '../levels/level.config'
 
@@ -44,6 +44,21 @@ function DrainCover({ x, z }: { x: number; z: number }) {
       {[-0.38, -0.13, 0.13, 0.38].map((offset) => (
         <Box key={offset} args={[0.06, 0.045, 0.5]} position={[offset, 0.02, 0]}>
           <meshStandardMaterial color="#252d2e" roughness={0.9} />
+        </Box>
+      ))}
+    </group>
+  )
+}
+
+function RoadManhole({ x, z }: { x: number; z: number }) {
+  return (
+    <group position={[x, 0.02, z]}>
+      <Cylinder args={[0.34, 0.34, 0.035, 16]}>
+        <meshStandardMaterial color="#555d5c" roughness={0.98} />
+      </Cylinder>
+      {[-0.12, 0.12].map((offset) => (
+        <Box key={offset} args={[0.045, 0.045, 0.48]} rotation={[0, offset > 0 ? 0.7 : -0.7, 0]} position={[0, 0.025, 0]}>
+          <meshStandardMaterial color="#2e3535" roughness={0.96} />
         </Box>
       ))}
     </group>
@@ -180,6 +195,8 @@ export function Road({ level }: { level: LevelConfig }) {
       <DrainCover x={roadLength * 0.33} z={-roadHalfWidth - 0.12} />
       <DrainCover x={-roadLength * 0.15} z={roadHalfWidth + 0.12} />
       <DrainCover x={roadLength * 0.27} z={roadHalfWidth + 0.12} />
+      <RoadManhole x={-roadLength * 0.23} z={-roadHalfWidth + 0.52} />
+      <RoadManhole x={roadLength * 0.31} z={roadHalfWidth - 0.52} />
 
       <Box args={[roadLength, 0.04, 0.65]} position={[0, 0.29, sidewalkZ]}>
         <meshStandardMaterial color="#4f8b62" />
