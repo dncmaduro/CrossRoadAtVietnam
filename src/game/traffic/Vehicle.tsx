@@ -7,7 +7,7 @@ import { useGameStore } from '../../store/gameStore'
 import type { IntersectionRuntime } from '../intersection/intersection.runtime'
 import type { SpawnInstruction } from './TrafficManager'
 import type { VehicleConfig, VehicleKind } from './traffic.config'
-import { CAR_COLORS, LARGE_VEHICLE_COLORS, TRAFFIC_TUNING } from './traffic.config'
+import { CAR_COLORS, FORCE_WAVE_MOTORCYCLE_VISUAL, LARGE_VEHICLE_COLORS, TRAFFIC_TUNING } from './traffic.config'
 import { ACTIVE_COLLISION_TYPES_ALL, didVehicleHitPlayer, TRAFFIC_COLLISION_GROUPS } from './trafficPhysics'
 import type { PlayerTrafficState, TrafficSnapshot } from './traffic.types'
 
@@ -24,6 +24,10 @@ type VehicleProps = {
 type WheelRefs = MutableRefObject<Array<THREE.Object3D | null>>
 export type VehicleVisualConfig = Pick<VehicleConfig, 'id' | 'kind' | 'direction' | 'width' | 'length' | 'style'>
 
+function getMotorcycleVisualStyle(style: VehicleVisualConfig['style']): VehicleVisualConfig['style'] {
+  return FORCE_WAVE_MOTORCYCLE_VISUAL ? 'underbone' : style ?? 'scooter'
+}
+
 // Traffic advances along X, so each wheel axle runs laterally along Z.
 // CylinderGeometry starts with its long axis on Y; bake Y -> Z once so the
 // animated wheel object can stay at zero rotation and spin only around Z.
@@ -33,7 +37,8 @@ const WHEEL_LOCAL_Y = 0.29
 
 export function getVehicleWheelRadius(config: VehicleVisualConfig) {
   if (config.kind === 'motorcycle') {
-    return config.style === 'underbone' ? 0.3 : config.style === 'sportScooter' ? 0.27 : 0.24
+    const style = getMotorcycleVisualStyle(config.style)
+    return style === 'underbone' ? 0.34 : style === 'sportScooter' ? 0.27 : 0.24
   }
   if (config.kind === 'car') return config.style === 'compactEv' ? 0.36 : 0.31
   return 0.36
@@ -81,11 +86,12 @@ function isLargeVehicle(kind: VehicleKind) {
 
 export function getVehicleColor(config: VehicleVisualConfig) {
   if (config.kind === 'motorcycle') {
-    const palette = config.style === 'scooter'
+    const style = getMotorcycleVisualStyle(config.style)
+    const palette = style === 'scooter'
       ? ['#c6c9c2', '#e7e4dc', '#2f6e73', '#a85d57', '#1c2730']
-      : config.style === 'sportScooter'
+      : style === 'sportScooter'
         ? ['#1c2730', '#3e4f58', '#a85d57', '#d6d2c9', '#29383c']
-        : ['#53635e', '#1c2730', '#2f6e73', '#7b3035', '#7c827c']
+      : ['#c7c9c2', '#e1e1d7', '#c7c9c2', '#29383d', '#315d69', '#74383b', '#68746e']
     return palette[config.id % palette.length]
   }
   if (config.kind === 'car' && config.style === 'compactEv') {
@@ -216,16 +222,24 @@ function Wheel({ radius, width, position, wheelRefs, index, side = 1, spokeCount
   side?: number
   spokeCount?: number
 }) {
-  const tireGeometry = useMemo(() => {
-    const geometry = new THREE.CylinderGeometry(radius, radius, width, 10)
-    geometry.rotateX(WHEEL_GEOMETRY_ROTATION_X)
-    return geometry
+  const wheelGeometry = useMemo(() => {
+    const tireTube = Math.min(width * 0.5, radius * 0.12)
+    const tire = new THREE.TorusGeometry(radius - tireTube, tireTube, 6, 20)
+    const rim = new THREE.TorusGeometry(radius * 0.72, radius * 0.026, 5, 18)
+    const hub = new THREE.CylinderGeometry(radius * 0.16, radius * 0.16, width * 0.7, 8)
+    const brake = new THREE.CylinderGeometry(radius * 0.28, radius * 0.28, width * 0.34, 10)
+    const axle = new THREE.CylinderGeometry(radius * 0.07, radius * 0.07, width * 1.08, 8)
+    hub.rotateX(WHEEL_GEOMETRY_ROTATION_X)
+    brake.rotateX(WHEEL_GEOMETRY_ROTATION_X)
+    axle.rotateX(WHEEL_GEOMETRY_ROTATION_X)
+    return { tire, rim, hub, brake, axle }
   }, [radius, width])
-  const hubGeometry = useMemo(() => {
-    const geometry = new THREE.CylinderGeometry(radius * 0.42, radius * 0.42, width + 0.018, 8)
-    geometry.rotateX(WHEEL_GEOMETRY_ROTATION_X)
-    return geometry
-  }, [radius, width])
+
+  const rimRadius = radius * 0.72
+  const hubRadius = radius * 0.16
+  const spokeLength = rimRadius - hubRadius
+  const spokeCenter = (rimRadius + hubRadius) / 2
+  const spokeThickness = radius * 0.025
 
   return (
     <group position={position}>
@@ -234,26 +248,41 @@ function Wheel({ radius, width, position, wheelRefs, index, side = 1, spokeCount
           if (wheelRefs && index !== undefined) wheelRefs.current[index] = node
         }}
       >
-        <mesh geometry={tireGeometry} castShadow>
+        <mesh geometry={wheelGeometry.tire} castShadow>
           <meshStandardMaterial color="#202729" roughness={0.94} />
         </mesh>
-        <mesh geometry={hubGeometry}>
-          <meshStandardMaterial color="#69716e" roughness={0.62} metalness={0.24} />
+        <mesh geometry={wheelGeometry.rim}>
+          <meshStandardMaterial color="#8d9690" roughness={0.52} metalness={0.38} />
+        </mesh>
+        <mesh geometry={wheelGeometry.brake} position={[0, 0, side * (width * 0.22)]}>
+          <meshStandardMaterial color="#58615e" roughness={0.76} metalness={0.28} />
+        </mesh>
+        <mesh geometry={wheelGeometry.hub}>
+          <meshStandardMaterial color="#a1a8a0" roughness={0.58} metalness={0.3} />
+        </mesh>
+        <mesh geometry={wheelGeometry.axle}>
+          <meshStandardMaterial color="#384240" roughness={0.72} metalness={0.32} />
         </mesh>
         {Array.from({ length: spokeCount }, (_, spokeIndex) => {
           const angle = (spokeIndex / spokeCount) * Math.PI * 2 + Math.PI / 10
-          const spokeRadius = radius * 0.34
           return (
             <Box
               key={spokeIndex}
-              args={[radius * 0.62, radius * 0.055, width * 0.18]}
-              position={[Math.cos(angle) * spokeRadius, Math.sin(angle) * spokeRadius, side * (width / 2 + 0.014)]}
+              args={[spokeLength, spokeThickness, width * 0.16]}
+              position={[Math.cos(angle) * spokeCenter, Math.sin(angle) * spokeCenter, side * (width / 2 + 0.014)]}
               rotation={[0, 0, angle]}
             >
-              <meshStandardMaterial color="#394342" roughness={0.72} metalness={0.18} />
+              <meshStandardMaterial color="#67716c" roughness={0.66} metalness={0.28} />
             </Box>
           )
         })}
+        <Box
+          args={[radius * 0.12, radius * 0.08, width * 0.24]}
+          position={[radius * 0.22, radius * 0.13, side * (width / 2 + 0.024)]}
+          rotation={[0, 0, -0.24]}
+        >
+          <meshStandardMaterial color="#303a38" roughness={0.8} metalness={0.18} />
+        </Box>
       </group>
     </group>
   )
@@ -266,9 +295,129 @@ function Mirror({ position }: { position: [number, number, number] }) {
         <meshStandardMaterial color="#313a3b" roughness={0.78} metalness={0.16} />
       </Cylinder>
       <Icosahedron args={[0.075, 1]} position={[0.04, 0.1, 0]} scale={[0.72, 1, 0.46]}>
-        <meshStandardMaterial color="#1e292b" roughness={0.34} metalness={0.08} />
+        <meshStandardMaterial color="#1e292b" roughness={0.5} metalness={0.16} />
+      </Icosahedron>
+      <Icosahedron args={[0.052, 1]} position={[0.065, 0.102, 0.028]} scale={[0.72, 1, 0.42]}>
+        <meshStandardMaterial color="#8eaaa8" roughness={0.24} metalness={0.18} />
       </Icosahedron>
     </group>
+  )
+}
+
+function TaperedPanel({
+  size,
+  topScale = 0.72,
+  position,
+  rotation,
+  color,
+  roughness = 0.72,
+}: {
+  size: [number, number, number]
+  topScale?: number
+  position: [number, number, number]
+  rotation?: [number, number, number]
+  color: string
+  roughness?: number
+}) {
+  const geometry = useMemo(() => {
+    const [length, height, width] = size
+    const halfLength = length / 2
+    const halfHeight = height / 2
+    const halfWidth = width / 2
+    const topLength = halfLength * topScale
+    const topWidth = halfWidth * (0.78 + topScale * 0.22)
+    const vertices = new Float32Array([
+      -halfLength, -halfHeight, -halfWidth,
+      halfLength, -halfHeight, -halfWidth,
+      halfLength, -halfHeight, halfWidth,
+      -halfLength, -halfHeight, halfWidth,
+      -topLength, halfHeight, -topWidth,
+      topLength, halfHeight, -topWidth,
+      topLength, halfHeight, topWidth,
+      -topLength, halfHeight, topWidth,
+    ])
+    const nextGeometry = new THREE.BufferGeometry()
+    nextGeometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3))
+    nextGeometry.setIndex([
+      0, 2, 1, 0, 3, 2,
+      4, 5, 6, 4, 6, 7,
+      0, 1, 5, 0, 5, 4,
+      1, 2, 6, 1, 6, 5,
+      2, 3, 7, 2, 7, 6,
+      3, 0, 4, 3, 4, 7,
+    ])
+    nextGeometry.computeVertexNormals()
+    return nextGeometry
+  }, [size, topScale])
+
+  return (
+    <mesh geometry={geometry} position={position} rotation={rotation} castShadow>
+      <meshStandardMaterial color={color} roughness={roughness} flatShading />
+    </mesh>
+  )
+}
+
+function ExtrudedPanel({
+  points,
+  depth,
+  position,
+  rotation,
+  color,
+  roughness = 0.72,
+  metalness = 0,
+}: {
+  points: Array<[number, number]>
+  depth: number
+  position: [number, number, number]
+  rotation?: [number, number, number]
+  color: string
+  roughness?: number
+  metalness?: number
+}) {
+  const geometry = useMemo(() => {
+    const shape = new THREE.Shape()
+    points.forEach(([x, y], index) => {
+      if (index === 0) shape.moveTo(x, y)
+      else shape.lineTo(x, y)
+    })
+    shape.closePath()
+    const nextGeometry = new THREE.ExtrudeGeometry(shape, {
+      depth,
+      bevelEnabled: false,
+      curveSegments: 1,
+      steps: 1,
+    })
+    nextGeometry.translate(0, 0, -depth / 2)
+    return nextGeometry
+  }, [depth, points])
+
+  return (
+    <mesh geometry={geometry} position={position} rotation={rotation} castShadow>
+      <meshStandardMaterial color={color} roughness={roughness} metalness={metalness} flatShading />
+    </mesh>
+  )
+}
+
+function LimbSegment({ position, length, radius, rotationZ, color }: {
+  position: [number, number, number]
+  length: number
+  radius: number
+  rotationZ: number
+  color: string
+}) {
+  return (
+    <Cylinder args={[radius, radius * 0.92, length, 7]} position={position} rotation={[0, 0, rotationZ]}>
+      <meshStandardMaterial color={color} roughness={0.9} />
+    </Cylinder>
+  )
+}
+
+function FrontMudguard({ position, radius }: { position: [number, number, number]; radius: number }) {
+  const geometry = useMemo(() => new THREE.TorusGeometry(radius * 1.02, 0.022, 5, 16, Math.PI), [radius])
+  return (
+    <mesh geometry={geometry} position={position} castShadow>
+      <meshStandardMaterial color="#252f30" roughness={0.84} />
+    </mesh>
   )
 }
 
@@ -399,95 +548,306 @@ function CarModel({ config, color, wheelRefs, heading: headingOverride }: { conf
   )
 }
 
-function Rider({ color, style }: { color: string; style?: VehicleVisualConfig['style'] }) {
+function Rider({ color, pantsColor, style }: { color: string; pantsColor: string; style?: VehicleVisualConfig['style'] }) {
   const isUnderbone = style === 'underbone'
   const isSport = style === 'sportScooter'
   const footX = isUnderbone ? -0.03 : isSport ? 0.18 : 0.28
   const legRotation = isUnderbone ? 0.25 : isSport ? 0.06 : -0.1
+  if (!isUnderbone) {
+    return (
+      <group position={[-0.08, 0, 0]}>
+        <Box args={[0.3, 0.48, 0.28]} position={[-0.1, 1.12, 0]} rotation={[0, 0, isSport ? -0.08 : 0]}>
+          <meshStandardMaterial color={color} roughness={0.86} />
+        </Box>
+        <Box args={[0.24, 0.16, 0.3]} position={[-0.1, 1.38, 0]}>
+          <meshStandardMaterial color={isSport ? '#303b43' : color} roughness={0.8} />
+        </Box>
+        <Icosahedron args={[0.19, 1]} position={[0.02, 1.58, 0]}>
+          <meshStandardMaterial color="#273438" roughness={0.58} />
+        </Icosahedron>
+        <Box args={[0.22, 0.045, 0.2]} position={[0.09, 1.5, 0.02]} rotation={[0, 0, -0.08]}>
+          <meshStandardMaterial color="#111a1b" roughness={0.32} metalness={0.08} />
+        </Box>
+        <Box args={[0.43, 0.07, 0.07]} position={[0.2, 1.34, 0.13]} rotation={[0, 0, isSport ? -0.34 : -0.22]}>
+          <meshStandardMaterial color={color} roughness={0.88} />
+        </Box>
+        <Box args={[0.43, 0.07, 0.07]} position={[0.2, 1.34, -0.13]} rotation={[0, 0, isSport ? -0.34 : -0.22]}>
+          <meshStandardMaterial color={color} roughness={0.88} />
+        </Box>
+        <Box args={[0.45, 0.08, 0.09]} position={[footX - 0.24, 0.79, 0.14]} rotation={[0, 0, legRotation]}>
+          <meshStandardMaterial color="#303b3d" roughness={0.86} />
+        </Box>
+        <Box args={[0.45, 0.08, 0.09]} position={[footX - 0.24, 0.79, -0.14]} rotation={[0, 0, legRotation]}>
+          <meshStandardMaterial color="#303b3d" roughness={0.86} />
+        </Box>
+      </group>
+    )
+  }
+
   return (
-    <group position={[-0.08, 0, 0]}>
-      <Box args={[0.3, 0.48, 0.28]} position={[-0.1, 1.12, 0]} rotation={[0, 0, isSport ? -0.08 : 0]}>
-        <meshStandardMaterial color={color} roughness={0.86} />
-      </Box>
-      <Box args={[0.24, 0.16, 0.3]} position={[-0.1, 1.38, 0]}>
-        <meshStandardMaterial color={isSport ? '#303b43' : color} roughness={0.8} />
-      </Box>
-      <Icosahedron args={[0.19, 1]} position={[0.02, 1.58, 0]}>
-        <meshStandardMaterial color="#273438" roughness={0.58} />
+    <group position={[0, -0.17, 0]}>
+      <ExtrudedPanel
+        points={[[-0.14, -0.2], [-0.13, 0.13], [-0.06, 0.22], [0.13, 0.16], [0.12, -0.17], [0.04, -0.23]]}
+        depth={0.28}
+        position={[-0.1, 1.1, 0]}
+        rotation={[0, 0, -0.1]}
+        color={color}
+        roughness={0.88}
+      />
+      <Cylinder args={[0.055, 0.06, 0.09, 7]} position={[-0.07, 1.37, 0]}>
+        <meshStandardMaterial color="#a8755d" roughness={0.92} />
+      </Cylinder>
+      <Icosahedron args={[0.17, 1]} position={[0.02, 1.58, 0]}>
+        <meshStandardMaterial color="#a8755d" roughness={0.92} />
       </Icosahedron>
-      <Box args={[0.22, 0.045, 0.2]} position={[0.09, 1.5, 0.02]} rotation={[0, 0, -0.08]}>
+      <Icosahedron args={[0.2, 1]} position={[0.02, 1.66, 0]} scale={[1.04, 0.58, 1.04]}>
+        <meshStandardMaterial color="#253236" roughness={0.58} />
+      </Icosahedron>
+      <Box args={[0.18, 0.035, 0.19]} position={[0.1, 1.55, 0.02]} rotation={[0, 0, -0.08]}>
         <meshStandardMaterial color="#111a1b" roughness={0.32} metalness={0.08} />
       </Box>
-      <Box args={[0.43, 0.07, 0.07]} position={[0.2, 1.34, 0.13]} rotation={[0, 0, isSport ? -0.34 : -0.22]}>
-        <meshStandardMaterial color={color} roughness={0.88} />
-      </Box>
-      <Box args={[0.43, 0.07, 0.07]} position={[0.2, 1.34, -0.13]} rotation={[0, 0, isSport ? -0.34 : -0.22]}>
-        <meshStandardMaterial color={color} roughness={0.88} />
-      </Box>
-      <Box args={[0.45, 0.08, 0.09]} position={[footX - 0.24, 0.79, 0.14]} rotation={[0, 0, legRotation]}>
-        <meshStandardMaterial color="#303b3d" roughness={0.86} />
-      </Box>
-      <Box args={[0.45, 0.08, 0.09]} position={[footX - 0.24, 0.79, -0.14]} rotation={[0, 0, legRotation]}>
-        <meshStandardMaterial color="#303b3d" roughness={0.86} />
-      </Box>
+      {[-1, 1].map((side) => (
+        <group key={side}>
+          <Icosahedron args={[0.052, 0]} position={[0.04, 1.34, side * 0.14]}>
+            <meshStandardMaterial color={color} roughness={0.88} />
+          </Icosahedron>
+          <LimbSegment position={[0.11, 1.32, side * 0.14]} length={0.17} radius={0.035} rotationZ={1.98} color={color} />
+          <Icosahedron args={[0.046, 0]} position={[0.2, 1.275, side * 0.14]}>
+            <meshStandardMaterial color="#a8755d" roughness={0.92} />
+          </Icosahedron>
+          <LimbSegment position={[0.3, 1.27, side * 0.14]} length={0.2} radius={0.032} rotationZ={1.82} color={color} />
+          <Icosahedron args={[0.045, 0]} position={[0.4, 1.26, side * 0.14]}>
+            <meshStandardMaterial color="#a8755d" roughness={0.92} />
+          </Icosahedron>
+          <Box args={[0.34, 0.1, 0.1]} position={[0.02, 0.94, side * 0.14]} rotation={[0, 0, 2.28]}>
+            <meshStandardMaterial color={pantsColor} roughness={0.9} />
+          </Box>
+          <Icosahedron args={[0.052, 0]} position={[0.08, 0.82, side * 0.14]}>
+            <meshStandardMaterial color={pantsColor} roughness={0.92} />
+          </Icosahedron>
+          <LimbSegment position={[0.1, 0.7, side * 0.14]} length={0.25} radius={0.035} rotationZ={2.98} color={pantsColor} />
+          <Box args={[0.16, 0.055, 0.12]} position={[footX + 0.02, 0.58, side * 0.14]}>
+            <meshStandardMaterial color="#242c2d" roughness={0.94} />
+          </Box>
+        </group>
+      ))}
     </group>
+  )
+}
+
+function UnderboneBody({ bodyColor, metal, dark }: { bodyColor: string; metal: string; dark: string }) {
+  const sidePanelColor = bodyColor === '#c7c9c2' || bodyColor === '#e1e1d7' ? '#4b5859' : '#26363b'
+  return (
+    <>
+      {/* Layered upright front cowl, separate bezel, lens, and lower neck. */}
+      <ExtrudedPanel points={[[-0.12, -0.18], [-0.11, 0.14], [-0.03, 0.23], [0.11, 0.13], [0.1, -0.17]]} depth={0.28} position={[0.5, 0.98, 0]} rotation={[0, 0, -0.1]} color={bodyColor} roughness={0.68} />
+      <ExtrudedPanel points={[[-0.08, -0.1], [-0.07, 0.13], [0.01, 0.2], [0.08, 0.08], [0.07, -0.1]]} depth={0.22} position={[0.62, 1.03, 0]} color="#252f30" roughness={0.72} metalness={0.18} />
+      <ExtrudedPanel points={[[-0.045, -0.06], [-0.04, 0.07], [0.01, 0.12], [0.045, 0.04], [0.04, -0.06]]} depth={0.18} position={[0.644, 1.03, 0]} color="#d5d4b8" roughness={0.28} />
+      <ExtrudedPanel points={[[-0.08, -0.1], [-0.07, 0.08], [0.06, 0.06], [0.08, -0.1]]} depth={0.25} position={[0.62, 0.78, 0]} rotation={[0, 0, -0.06]} color={bodyColor} roughness={0.74} />
+      {[-1, 1].map((side) => (
+        <group key={`front-signal-${side}`} position={[0.59, 0.87, side * 0.17]}>
+          <Icosahedron args={[0.052, 0]} scale={[0.6, 0.72, 1]}>
+            <meshStandardMaterial color="#b86f43" emissive="#5a321b" emissiveIntensity={0.14} roughness={0.42} />
+          </Icosahedron>
+        </group>
+      ))}
+
+      {/* Two thin fork tubes, lower sliders, axle, and a close-fitting mudguard. */}
+      {[-1, 1].map((side) => (
+        <group key={`fork-${side}`}>
+          <Cylinder args={[0.016, 0.019, 0.48, 7]} rotation={[0, 0, -0.13]} position={[0.55, 0.66, side * 0.12]}>
+            <meshStandardMaterial color="#b0b5ac" roughness={0.58} metalness={0.34} />
+          </Cylinder>
+          <Cylinder args={[0.024, 0.03, 0.2, 7]} rotation={[0, 0, -0.13]} position={[0.59, 0.43, side * 0.12]}>
+            <meshStandardMaterial color="#4b5552" roughness={0.76} metalness={0.24} />
+          </Cylinder>
+        </group>
+      ))}
+      <Cylinder args={[0.038, 0.038, 0.24, 8]} rotation={[Math.PI / 2, 0, 0]} position={[0.65, WHEEL_LOCAL_Y + 0.17, 0]}>
+        <meshStandardMaterial color="#343e3c" roughness={0.72} metalness={0.3} />
+      </Cylinder>
+      <FrontMudguard position={[0.65, WHEEL_LOCAL_Y + 0.17, 0]} radius={0.34} />
+      <Box args={[0.24, 0.08, 0.16]} position={[0.42, 1.22, 0]} rotation={[0, 0, -0.05]}>
+        <meshStandardMaterial color={dark} roughness={0.78} />
+      </Box>
+      <Box args={[0.1, 0.07, 0.12]} position={[0.33, 1.28, 0]}>
+        <meshStandardMaterial color="#343e3e" roughness={0.54} metalness={0.16} />
+      </Box>
+      <Cylinder args={[0.018, 0.018, 0.5, 7]} rotation={[Math.PI / 2, 0, 0]} position={[0.4, 1.27, 0]}>
+        <meshStandardMaterial color="#303939" roughness={0.72} metalness={0.18} />
+      </Cylinder>
+
+      {/* Split leg shield: thin, sculpted cheeks and a narrow center spine leave the step-through open. */}
+      {[-1, 1].map((side) => (
+        <ExtrudedPanel
+          key={`leg-shield-${side}`}
+          points={[[-0.06, -0.16], [-0.07, 0.08], [-0.02, 0.19], [0.05, 0.1], [0.035, -0.14]]}
+          depth={0.035}
+          position={[0.29, 0.9, side * 0.12]}
+          rotation={[0, 0, -0.12]}
+          color={bodyColor}
+          roughness={0.72}
+        />
+      ))}
+      <ExtrudedPanel points={[[-0.022, -0.16], [-0.025, 0.13], [0, 0.2], [0.025, 0.13], [0.022, -0.16]]} depth={0.04} position={[0.29, 0.88, 0]} rotation={[0, 0, -0.12]} color={metal} roughness={0.76} metalness={0.18} />
+      <ExtrudedPanel points={[[-0.035, -0.06], [-0.038, 0.025], [0, 0.075], [0.038, 0.02], [0.032, -0.06]]} depth={0.1} position={[0.14, 0.68, 0]} rotation={[0, 0, -0.16]} color={bodyColor} roughness={0.78} />
+
+      {/* Longer, thinner seat and a rear body that tapers away from the engine. */}
+      <ExtrudedPanel points={[[-0.48, -0.04], [-0.4, 0.03], [0.29, 0.035], [0.48, -0.008], [0.38, -0.04]]} depth={0.22} position={[-0.22, 0.98, 0]} rotation={[0, 0, -0.035]} color="#171f20" roughness={0.92} />
+      <Box args={[0.84, 0.05, 0.19]} position={[-0.22, 0.91, 0]} rotation={[0, 0, -0.035]}>
+        <meshStandardMaterial color="#2b3333" roughness={0.94} />
+      </Box>
+      <TaperedPanel size={[0.28, 0.18, 0.2]} topScale={0.58} position={[-0.62, 0.77, 0]} rotation={[0, 0, 0.1]} color={sidePanelColor} roughness={0.78} />
+      <ExtrudedPanel points={[[-0.1, -0.06], [-0.08, 0.05], [0.02, 0.09], [0.1, 0.02], [0.06, -0.06]]} depth={0.16} position={[-0.81, 0.83, 0]} rotation={[0, 0, 0.16]} color={sidePanelColor} roughness={0.8} />
+      <Box args={[0.035, 0.09, 0.17]} position={[-0.925, 0.85, 0]}>
+        <meshStandardMaterial color="#292f30" roughness={0.78} />
+      </Box>
+      <Box args={[0.03, 0.075, 0.15]} position={[-0.95, 0.85, 0]}>
+        <meshStandardMaterial color="#b34e48" emissive="#3f1413" emissiveIntensity={0.16} roughness={0.5} />
+      </Box>
+      {[-1, 1].map((side) => (
+        <Icosahedron key={`rear-indicator-${side}`} args={[0.045, 0]} position={[-0.84, 0.78, side * 0.18]}>
+          <meshStandardMaterial color="#b86f43" emissive="#5a321b" emissiveIntensity={0.14} roughness={0.42} />
+        </Icosahedron>
+      ))}
+      {/* CylinderGeometry is Y-aligned by default; rotate around Z so the compact rail follows X. */}
+      <Cylinder args={[0.018, 0.018, 0.34, 7]} rotation={[0, 0, Math.PI / 2]} position={[-0.56, 1.085, 0]}>
+        <meshStandardMaterial color="#303838" roughness={0.76} metalness={0.22} />
+      </Cylinder>
+      {[-1, 1].map((side) => (
+        <Cylinder key={`grab-mount-${side}`} args={[0.016, 0.016, 0.1, 6]} position={[-0.68, 1.045, side * 0.1]}>
+          <meshStandardMaterial color="#58615d" roughness={0.72} metalness={0.22} />
+        </Cylinder>
+      ))}
+      <Box args={[0.045, 0.18, 0.03]} position={[-0.86, 0.58, 0]} rotation={[0, 0, 0.18]}>
+        <meshStandardMaterial color="#343d3c" roughness={0.86} metalness={0.18} />
+      </Box>
+      <Box args={[0.035, 0.12, 0.15]} position={[-0.96, 0.64, 0]} rotation={[0, 0, 0.2]}>
+        <meshStandardMaterial color="#e0e0d2" roughness={0.76} />
+      </Box>
+      <ExtrudedPanel points={[[-0.16, -0.035], [0.16, -0.028], [0.2, 0.025], [-0.1, 0.065]]} depth={0.045} position={[-0.84, 0.46, 0]} rotation={[0, 0, -0.16]} color="#252e30" roughness={0.88} />
+      <Cylinder args={[0.018, 0.024, 0.43, 6]} position={[-0.48, 0.58, 0.18]} rotation={[0, 0, -0.45]}>
+        <meshStandardMaterial color="#9ca49c" roughness={0.64} metalness={0.3} />
+      </Cylinder>
+      <Cylinder args={[0.032, 0.032, 0.035, 7]} position={[-0.38, 0.77, 0.18]} rotation={[0, 0, -0.45]}>
+        <meshStandardMaterial color="#252e2f" roughness={0.78} metalness={0.2} />
+      </Cylinder>
+      <Cylinder args={[0.032, 0.032, 0.035, 7]} position={[-0.58, 0.39, 0.18]} rotation={[0, 0, -0.45]}>
+        <meshStandardMaterial color="#252e2f" roughness={0.78} metalness={0.2} />
+      </Cylinder>
+      {[
+        [-0.42, 0.69],
+        [-0.48, 0.58],
+        [-0.54, 0.47],
+      ].map(([x, y], index) => (
+        <Box key={`shock-spring-${index}`} args={[0.035, 0.018, 0.05]} position={[x, y, 0.185]} rotation={[0, 0, -0.45]}>
+          <meshStandardMaterial color="#b2b8ae" roughness={0.62} metalness={0.28} />
+        </Box>
+      ))}
+
+      {/* Frame rail, engine, side covers, and foot-peg area. */}
+      <Box args={[0.68, 0.1, 0.15]} position={[-0.08, 0.7, 0]} rotation={[0, 0, -0.08]}>
+        <meshStandardMaterial color={metal} roughness={0.84} metalness={0.14} />
+      </Box>
+      {[-1, 1].map((side) => (
+        <Cylinder key={`rear-frame-${side}`} args={[0.016, 0.019, 0.58, 7]} rotation={[0, 0, Math.PI / 2]} position={[-0.38, 0.77, side * 0.16]}>
+          <meshStandardMaterial color="#3b4543" roughness={0.82} metalness={0.2} />
+        </Cylinder>
+      ))}
+      <Box args={[0.36, 0.25, 0.28]} position={[-0.18, 0.54, 0]}>
+        <meshStandardMaterial color="#242d2e" roughness={0.9} metalness={0.12} />
+      </Box>
+      <Cylinder args={[0.13, 0.13, 0.09, 10]} rotation={[Math.PI / 2, 0, 0]} position={[-0.2, 0.53, 0.17]}>
+        <meshStandardMaterial color="#56605b" roughness={0.78} metalness={0.28} />
+      </Cylinder>
+      <Box args={[0.24, 0.28, 0.065]} position={[-0.22, 0.57, 0.17]} rotation={[0, 0, -0.08]}>
+        <meshStandardMaterial color="#4b5552" roughness={0.8} metalness={0.26} />
+      </Box>
+      <Box args={[0.18, 0.2, 0.24]} position={[0.04, 0.66, 0]}>
+        <meshStandardMaterial color="#3d4845" roughness={0.84} metalness={0.22} />
+      </Box>
+      {Array.from({ length: 5 }, (_, index) => (
+        <Box key={`cooling-fin-${index}`} args={[0.19, 0.018, 0.25]} position={[-0.01, 0.58 + index * 0.032, 0.16]} rotation={[0, 0, -0.08]}>
+          <meshStandardMaterial color="#69716b" roughness={0.74} metalness={0.24} />
+        </Box>
+      ))}
+      <Cylinder args={[0.028, 0.035, 0.25, 7]} rotation={[0, 0, Math.PI / 2]} position={[0.16, 0.57, 0.14]}>
+        <meshStandardMaterial color="#343e3c" roughness={0.8} metalness={0.2} />
+      </Cylinder>
+      <ExtrudedPanel points={[[-0.14, -0.05], [0.12, -0.04], [0.16, 0.04], [-0.08, 0.07]]} depth={0.04} position={[-0.4, 0.75, 0.17]} rotation={[0, 0, 0.12]} color={sidePanelColor} roughness={0.82} />
+      {[-1, 1].map((side) => (
+        <group key={`foot-peg-${side}`}>
+          <Cylinder args={[0.014, 0.014, 0.28, 6]} rotation={[Math.PI / 2, 0, 0]} position={[-0.04, 0.5, side * 0.13]}>
+            <meshStandardMaterial color="#929b93" roughness={0.68} metalness={0.28} />
+          </Cylinder>
+          <Box args={[0.16, 0.055, 0.065]} position={[-0.04, 0.5, side * 0.22]}>
+            <meshStandardMaterial color="#242c2d" roughness={0.9} />
+          </Box>
+        </group>
+      ))}
+      <Box args={[0.09, 0.035, 0.05]} position={[0.04, 0.48, -0.25]} rotation={[0, 0, -0.24]}>
+        <meshStandardMaterial color="#9da59e" roughness={0.7} metalness={0.25} />
+      </Box>
+      <Box args={[0.08, 0.035, 0.05]} position={[-0.02, 0.46, 0.25]} rotation={[0, 0, 0.18]}>
+        <meshStandardMaterial color="#9da59e" roughness={0.7} metalness={0.25} />
+      </Box>
+      <Box args={[0.48, 0.045, 0.05]} position={[-0.43, 0.39, 0.18]} rotation={[0, 0, 0.43]}>
+        <meshStandardMaterial color="#303a38" roughness={0.86} metalness={0.18} />
+      </Box>
+      <Box args={[0.45, 0.04, 0.05]} position={[-0.44, 0.37, 0.18]} rotation={[0, 0, 0.43]}>
+        <meshStandardMaterial color="#45504c" roughness={0.82} metalness={0.2} />
+      </Box>
+
+      {/* Long, thin commuter exhaust: header, connecting pipe, muffler, tip, and heat shield. */}
+      <Cylinder args={[0.026, 0.034, 0.2, 7]} rotation={[0, 0, Math.PI / 2 - 0.05]} position={[-0.02, 0.5, -0.22]}>
+        <meshStandardMaterial color="#7a817b" roughness={0.7} metalness={0.28} />
+      </Cylinder>
+      <Cylinder args={[0.034, 0.046, 0.52, 7]} rotation={[0, 0, Math.PI / 2 + 0.04]} position={[-0.3, 0.43, -0.22]}>
+        <meshStandardMaterial color="#4d5652" roughness={0.8} metalness={0.22} />
+      </Cylinder>
+      <Cylinder args={[0.054, 0.062, 0.42, 8]} rotation={[0, 0, Math.PI / 2 - 0.03]} position={[-0.65, 0.5, -0.22]}>
+        <meshStandardMaterial color="#252d2e" roughness={0.84} metalness={0.18} />
+      </Cylinder>
+      <Cylinder args={[0.062, 0.042, 0.04, 8]} rotation={[0, 0, Math.PI / 2 - 0.03]} position={[-0.88, 0.53, -0.22]}>
+        <meshStandardMaterial color="#11191a" roughness={0.82} metalness={0.22} />
+      </Cylinder>
+      <Box args={[0.31, 0.04, 0.07]} position={[-0.65, 0.575, -0.27]} rotation={[0, 0, 0.03]}>
+        <meshStandardMaterial color="#59615d" roughness={0.7} metalness={0.2} />
+      </Box>
+      {[-0.77, -0.56].map((x) => (
+        <Box key={`muffler-band-${x}`} args={[0.022, 0.075, 0.075]} position={[x, 0.5, -0.22]}>
+          <meshStandardMaterial color="#8a918a" roughness={0.7} metalness={0.24} />
+        </Box>
+      ))}
+      <Box args={[0.5, 0.04, 0.035]} position={[-0.42, 0.34, 0.18]} rotation={[0, 0, 0.05]}>
+        <meshStandardMaterial color="#303a38" roughness={0.86} metalness={0.18} />
+      </Box>
+    </>
   )
 }
 
 function MotorcycleModel({ config, color, wheelRefs, heading: headingOverride }: { config: VehicleVisualConfig; color: string; wheelRefs: WheelRefs; heading?: number }) {
   const heading = headingOverride ?? (config.direction === 1 ? 0 : Math.PI)
-  const style = config.style ?? 'scooter'
+  const style = getMotorcycleVisualStyle(config.style)
   const isUnderbone = style === 'underbone'
   const isSportScooter = style === 'sportScooter'
-  const riderColor = config.id % 2 === 0 ? '#53635e' : '#6d4e42'
-  const wheelBase = isUnderbone ? 0.62 : isSportScooter ? 0.64 : 0.62
+  const riderColor = ['#315e6a', '#6d7470', '#3d674c', '#a58a68', '#343b3d'][config.id % 5]
+  const riderPants = config.id % 3 === 0 ? '#202b2d' : '#313b3d'
+  const wheelBase = isUnderbone ? 0.65 : isSportScooter ? 0.64 : 0.62
   const wheelRadius = getVehicleWheelRadius(config)
+  const wheelWidth = isUnderbone ? 0.1 : 0.13
   const bodyColor = color
   const dark = '#252e30'
   const metal = '#4b5351'
+  const cockpitY = isUnderbone ? 1.09 : 1.26
   const visualOffsetY = getVehicleVisualOffsetY(config)
 
   return (
     <group position={[0, visualOffsetY, 0]} rotation={[0, heading, 0]}>
       {isUnderbone ? (
-        <>
-          <Box args={[0.22, 0.56, 0.27]} position={[0.47, 0.86, 0]} rotation={[0, 0, -0.05]}>
-            <meshStandardMaterial color={bodyColor} roughness={0.68} />
-          </Box>
-          <Box args={[0.2, 0.2, 0.3]} position={[0.57, 0.65, 0]}>
-            <meshStandardMaterial color="#334144" roughness={0.58} />
-          </Box>
-          <Box args={[0.72, 0.13, 0.17]} position={[-0.08, 0.63, 0]} rotation={[0, 0, -0.12]}>
-            <meshStandardMaterial color={metal} roughness={0.82} metalness={0.12} />
-          </Box>
-          <Box args={[0.34, 0.17, 0.28]} position={[-0.2, 0.77, 0]}>
-            <meshStandardMaterial color={bodyColor} roughness={0.72} />
-          </Box>
-          <Box args={[0.68, 0.13, 0.3]} position={[-0.28, 0.91, 0]}>
-            <meshStandardMaterial color="#20282a" roughness={0.88} />
-          </Box>
-          <Box args={[0.26, 0.25, 0.28]} position={[-0.52, 0.77, 0]} rotation={[0, 0, -0.1]}>
-            <meshStandardMaterial color={bodyColor} roughness={0.72} />
-          </Box>
-          <Box args={[0.19, 0.14, 0.23]} position={[-0.04, 0.43, 0.16]}>
-            <meshStandardMaterial color="#343f40" roughness={0.84} metalness={0.22} />
-          </Box>
-          <Box args={[0.25, 0.2, 0.2]} position={[-0.22, 0.43, 0.16]}>
-            <meshStandardMaterial color="#3b4544" roughness={0.86} metalness={0.18} />
-          </Box>
-          <Box args={[0.22, 0.13, 0.22]} position={[-0.4, 0.48, 0.16]}>
-            <meshStandardMaterial color="#283132" roughness={0.84} />
-          </Box>
-          <Box args={[0.3, 0.08, 0.04]} position={[-0.02, 0.31, 0.2]}>
-            <meshStandardMaterial color="#181f20" roughness={0.8} metalness={0.2} />
-          </Box>
-          <Cylinder args={[0.045, 0.06, 0.72, 7]} rotation={[0, Math.PI / 2, 0]} position={[-0.32, 0.36, -0.19]}>
-            <meshStandardMaterial color="#555b57" roughness={0.78} metalness={0.2} />
-          </Cylinder>
-          <Cylinder args={[0.04, 0.05, 0.38, 7]} rotation={[0, 0, -0.14]} position={[-0.5, 0.52, -0.19]}>
-            <meshStandardMaterial color="#505a56" roughness={0.82} metalness={0.18} />
-          </Cylinder>
-        </>
+        <group position={[0, -0.17, 0]}>
+          <UnderboneBody bodyColor={bodyColor} metal={metal} dark={dark} />
+        </group>
       ) : isSportScooter ? (
         <>
           <Box args={[0.94, 0.24, 0.43]} position={[-0.02, 0.59, 0]} rotation={[0, 0, -0.04]}>
@@ -576,26 +936,26 @@ function MotorcycleModel({ config, color, wheelRefs, heading: headingOverride }:
           </Box>
         </>
       )}
-      <Box args={[0.34, 0.07, 0.22]} position={[0.42, 1.26, 0]}>
+      <Box args={[0.34, 0.07, 0.22]} position={[0.42, cockpitY, 0]}>
         <meshStandardMaterial color="#313b3c" roughness={0.82} metalness={0.1} />
       </Box>
-      <Mirror position={[0.45, 1.25, 0.18]} />
-      <Mirror position={[0.45, 1.25, -0.18]} />
+      <Mirror position={[0.45, cockpitY - 0.01, 0.18]} />
+      <Mirror position={[0.45, cockpitY - 0.01, -0.18]} />
       {[-wheelBase, wheelBase].map((x, index) => (
         <Wheel
           key={x}
           radius={wheelRadius}
-          width={0.13}
+          width={wheelWidth}
           position={[x, WHEEL_LOCAL_Y, 0]}
           wheelRefs={wheelRefs}
           index={index}
-          spokeCount={isUnderbone ? 6 : 5}
+          spokeCount={isUnderbone ? 14 : 5}
         />
       ))}
       <Box args={[0.2, 0.07, 0.25]} position={[-wheelBase, 0.58, 0]}>
         <meshStandardMaterial color={dark} roughness={0.82} />
       </Box>
-      <Rider color={riderColor} style={style} />
+      <Rider color={riderColor} pantsColor={riderPants} style={style} />
     </group>
   )
 }

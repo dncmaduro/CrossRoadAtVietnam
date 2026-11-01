@@ -64,41 +64,41 @@ export type LevelConfig = {
 const quietStreet: TrafficProfile = {
   vehiclesPerLane: 2,
   motorcycleRatio: 0.78,
-  speedRange: [3.2, 4.2],
+  speedRange: [7, 8.8],
   aggressionRange: [0.25, 0.48],
   spawnGap: 8.2,
-  carReactionDistance: [2.3, 2.5],
-  motorcycleReactionDistance: [1.15, 1.3],
+  carReactionDistance: [3.2, 3.6],
+  motorcycleReactionDistance: [1.45, 1.7],
 }
 
 const urbanTraffic: TrafficProfile = {
   vehiclesPerLane: 3,
   motorcycleRatio: 0.5,
-  speedRange: [3.6, 5.1],
+  speedRange: [7.8, 10.4],
   aggressionRange: [0.18, 0.66],
   spawnGap: 6.7,
-  carReactionDistance: [2.2, 2.45],
-  motorcycleReactionDistance: [1.12, 1.28],
+  carReactionDistance: [3.3, 3.8],
+  motorcycleReactionDistance: [1.5, 1.8],
 }
 
 const motorcycleFlow: TrafficProfile = {
   vehiclesPerLane: 4,
   motorcycleRatio: 0.84,
-  speedRange: [4.2, 5.9],
+  speedRange: [8.6, 11.4],
   aggressionRange: [0.42, 0.82],
   spawnGap: 5.7,
-  carReactionDistance: [2.2, 2.4],
-  motorcycleReactionDistance: [1.05, 1.22],
+  carReactionDistance: [3.4, 3.9],
+  motorcycleReactionDistance: [1.55, 1.9],
 }
 
 const arterialTraffic: TrafficProfile = {
   vehiclesPerLane: 3,
   motorcycleRatio: 0.58,
-  speedRange: [4.2, 5.8],
+  speedRange: [9, 12.2],
   aggressionRange: [0.25, 0.7],
   spawnGap: 6.4,
-  carReactionDistance: [2.25, 2.5],
-  motorcycleReactionDistance: [1.08, 1.25],
+  carReactionDistance: [3.6, 4.2],
+  motorcycleReactionDistance: [1.65, 2],
 }
 
 const rushHourTraffic: TrafficProfile = {
@@ -106,11 +106,11 @@ const rushHourTraffic: TrafficProfile = {
   motorcycleRatio: 0.52,
   busRatio: 0.1,
   truckRatio: 0.1,
-  speedRange: [3.6, 5.2],
+  speedRange: [8, 10.8],
   aggressionRange: [0.22, 0.72],
   spawnGap: 7.1,
-  carReactionDistance: [2.4, 2.75],
-  motorcycleReactionDistance: [1.05, 1.24],
+  carReactionDistance: [3.5, 4.1],
+  motorcycleReactionDistance: [1.55, 1.9],
 }
 
 function createPlayerBounds(roadLength: number, roadHalfWidth: number, sidewalkWidth: number) {

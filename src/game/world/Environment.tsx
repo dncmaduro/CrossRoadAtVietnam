@@ -427,32 +427,55 @@ function CableSpan({
   )
 }
 
-function ParkedScooter({ x, z, color, flip = false }: { x: number; z: number; color: string; flip?: boolean }) {
+function ParkedUnderbone({ x, z, color, flip = false }: { x: number; z: number; color: string; flip?: boolean }) {
   return (
     <group position={[x, 0, z]} rotation={[0, flip ? Math.PI : 0, 0]} scale={0.72}>
-      <Cylinder args={[0.2, 0.2, 0.12, 10]} rotation={[Math.PI / 2, 0, 0]} position={[-0.62, 0.2, 0]}>
-        <meshStandardMaterial color="#242b2c" roughness={0.9} />
+      <Cylinder args={[0.3, 0.3, 0.1, 10]} rotation={[Math.PI / 2, 0, 0]} position={[-0.62, 0.3, 0]}>
+        <meshStandardMaterial color="#242b2c" roughness={0.92} />
       </Cylinder>
-      <Cylinder args={[0.2, 0.2, 0.12, 10]} rotation={[Math.PI / 2, 0, 0]} position={[0.62, 0.2, 0]}>
-        <meshStandardMaterial color="#242b2c" roughness={0.9} />
+      <Cylinder args={[0.3, 0.3, 0.1, 10]} rotation={[Math.PI / 2, 0, 0]} position={[0.62, 0.3, 0]}>
+        <meshStandardMaterial color="#242b2c" roughness={0.92} />
       </Cylinder>
-      <Cylinder args={[0.1, 0.13, 0.16, 8]} rotation={[Math.PI / 2, 0, 0]} position={[-0.62, 0.2, 0]}>
-        <meshStandardMaterial color="#b3b7ac" roughness={0.65} metalness={0.22} />
+      <Cylinder args={[0.12, 0.12, 0.12, 8]} rotation={[Math.PI / 2, 0, 0]} position={[-0.62, 0.3, 0]}>
+        <meshStandardMaterial color="#aeb3aa" roughness={0.65} metalness={0.24} />
       </Cylinder>
-      <Cylinder args={[0.1, 0.13, 0.16, 8]} rotation={[Math.PI / 2, 0, 0]} position={[0.62, 0.2, 0]}>
-        <meshStandardMaterial color="#b3b7ac" roughness={0.65} metalness={0.22} />
+      <Cylinder args={[0.12, 0.12, 0.12, 8]} rotation={[Math.PI / 2, 0, 0]} position={[0.62, 0.3, 0]}>
+        <meshStandardMaterial color="#aeb3aa" roughness={0.65} metalness={0.24} />
       </Cylinder>
-      <Box args={[0.9, 0.3, 0.32]} position={[0, 0.52, 0]}>
+      <Box args={[0.2, 0.4, 0.28]} position={[0.5, 0.96, 0]} rotation={[0, 0, -0.1]}>
+        <meshStandardMaterial color={color} roughness={0.72} />
+      </Box>
+      <Box args={[0.035, 0.13, 0.18]} position={[0.626, 1.03, 0]}>
+        <meshStandardMaterial color="#d5d4b8" roughness={0.36} />
+      </Box>
+      {[-1, 1].map((side) => (
+        <Cylinder key={side} args={[0.023, 0.028, 0.64, 7]} rotation={[0, 0, -0.13]} position={[0.55, 0.56, side * 0.12]}>
+          <meshStandardMaterial color="#9fa7a0" roughness={0.66} metalness={0.28} />
+        </Cylinder>
+      ))}
+      <Box args={[0.8, 0.11, 0.25]} position={[-0.22, 0.98, 0]} rotation={[0, 0, -0.045]}>
+        <meshStandardMaterial color="#171f20" roughness={0.92} />
+      </Box>
+      <Box args={[0.34, 0.26, 0.28]} position={[-0.62, 0.8, 0]} rotation={[0, 0, 0.12]}>
         <meshStandardMaterial color={color} roughness={0.7} />
       </Box>
-      <Box args={[0.1, 0.72, 0.1]} position={[0.46, 0.78, 0]}>
-        <meshStandardMaterial color="#303738" roughness={0.76} />
+      <Box args={[0.24, 0.2, 0.25]} position={[-0.81, 0.87, 0]} rotation={[0, 0, 0.18]}>
+        <meshStandardMaterial color={color} roughness={0.76} />
       </Box>
-      <Box args={[0.5, 0.05, 0.08]} position={[0.49, 1.08, 0]}>
-        <meshStandardMaterial color="#303738" roughness={0.76} />
+      <Box args={[0.035, 0.1, 0.18]} position={[-0.925, 0.88, 0]}>
+        <meshStandardMaterial color="#b34e48" roughness={0.5} />
       </Box>
-      <Box args={[0.06, 0.08, 0.08]} position={[0.7, 1.02, 0.18]}>
-        <meshStandardMaterial color="#d7c178" emissive="#6d4e1c" emissiveIntensity={0.2} />
+      <Box args={[0.68, 0.1, 0.15]} position={[-0.08, 0.7, 0]} rotation={[0, 0, -0.08]}>
+        <meshStandardMaterial color="#4b5552" roughness={0.84} metalness={0.14} />
+      </Box>
+      <Box args={[0.36, 0.25, 0.28]} position={[-0.18, 0.54, 0]}>
+        <meshStandardMaterial color="#242d2e" roughness={0.9} />
+      </Box>
+      <Cylinder args={[0.065, 0.074, 0.36, 8]} rotation={[0, 0, Math.PI / 2]} position={[-0.62, 0.44, -0.2]}>
+        <meshStandardMaterial color="#252d2e" roughness={0.84} metalness={0.18} />
+      </Cylinder>
+      <Box args={[0.27, 0.045, 0.08]} position={[-0.62, 0.51, -0.25]}>
+        <meshStandardMaterial color="#59615d" roughness={0.7} metalness={0.2} />
       </Box>
     </group>
   )
@@ -632,13 +655,13 @@ export function Environment({ level }: { level: LevelConfig }) {
         ? [-0.43, -0.29, -0.13, 0.05, 0.23, 0.4].map((ratio) => ratio * level.roadLength)
         : [-0.37, -0.12, 0.14, 0.39].map((ratio) => ratio * level.roadLength)
       ).map((x, index) => (
-        <ParkedScooter key={`scooter-north-${x}`} x={x} z={scooterZ} color={['#c95e4e', '#2d6e74', '#e0b647', '#b75350', '#536d68', '#d7d0b2'][index % 6]} />
+        <ParkedUnderbone key={`underbone-north-${x}`} x={x} z={scooterZ} color={['#6b7470', '#2d5f69', '#74383b', '#536d68', '#c7c9c2', '#29383d'][index % 6]} />
       ))}
       {(extraScooters
         ? [-0.38, -0.2, -0.02, 0.16, 0.34].map((ratio) => ratio * level.roadLength)
         : [-0.32, -0.08, 0.18, 0.4].map((ratio) => ratio * level.roadLength)
       ).map((x, index) => (
-        <ParkedScooter key={`scooter-south-${x}`} x={x} z={-scooterZ} color={['#d8ad3f', '#4d7e66', '#b75350', '#2f6e73', '#c7c2a2'][index % 5]} flip />
+        <ParkedUnderbone key={`underbone-south-${x}`} x={x} z={-scooterZ} color={['#68746e', '#315d69', '#74383b', '#4b5960', '#c7c9c2'][index % 5]} flip />
       ))}
       <SidewalkPedestrian
         x={-level.roadLength * 0.28}

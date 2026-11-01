@@ -110,8 +110,8 @@ export function PathVehicle({ config, getTraffic, onUpdate, playerState, interse
     const targetSpeed = shouldStopForSignal || !hasReservation
       ? 0
       : config.speed * (1 - THREE.MathUtils.clamp(playerRisk, 0, 0.82) * 0.5)
-    const acceleration = config.kind === 'motorcycle' ? 4.8 : config.kind === 'bus' || config.kind === 'truck' ? 1.65 : 3
-    const braking = config.kind === 'motorcycle' ? 8 : config.kind === 'bus' || config.kind === 'truck' ? 5.2 : 7.2
+    const acceleration = config.kind === 'motorcycle' ? 6.3 : config.kind === 'bus' || config.kind === 'truck' ? 2.1 : 4.2
+    const braking = config.kind === 'motorcycle' ? 11.5 : config.kind === 'bus' || config.kind === 'truck' ? 6.2 : 9.2
     state.speed = THREE.MathUtils.damp(state.speed, targetSpeed, targetSpeed < state.speed ? braking : acceleration, frameDelta)
     state.progress = Math.min(1, state.progress + (state.speed * frameDelta) / config.path.length)
     samplePath(config, state.progress, position.current, tangent.current)

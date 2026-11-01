@@ -6,6 +6,10 @@ export type MotorcycleStyle = 'scooter' | 'underbone' | 'sportScooter'
 export type CarStyle = 'compactEv' | 'sedan'
 export type VehicleStyle = MotorcycleStyle | CarStyle
 
+// Temporary visual QA switch. It affects motorcycle rendering only; the
+// original style/config values remain available for later variation work.
+export const FORCE_WAVE_MOTORCYCLE_VISUAL = true
+
 export type VehicleConfig = {
   id: number
   kind: VehicleKind
@@ -28,29 +32,29 @@ export type VehicleConfig = {
 
 export const TRAFFIC_TUNING = {
   lateralCandidates: [-1.03, -0.55, 0, 0.55, 1.03],
-  perceptionDistance: 15,
-  playerPredictionTime: 0.32,
-  playerLongitudinalRange: 4.8,
-  playerLateralRange: 1.2,
+  perceptionDistance: 18,
+  playerPredictionTime: 0.38,
+  playerLongitudinalRange: 5.4,
+  playerLateralRange: 1.3,
   spawnBuffer: 8,
   car: {
-    acceleration: 3.3,
-    braking: 8.5,
-    reactionTime: 0.62,
+    acceleration: 4.6,
+    braking: 10.5,
+    reactionTime: 0.7,
     sideMargin: 0.14,
     steerSpeed: 0.28,
   },
   motorcycle: {
-    acceleration: 5.2,
-    braking: 10.5,
-    reactionTime: 0.32,
+    acceleration: 7,
+    braking: 13.5,
+    reactionTime: 0.36,
     sideMargin: 0.1,
-    steerSpeed: 1.9,
+    steerSpeed: 1.35,
   },
   large: {
-    acceleration: 1.9,
-    braking: 5.7,
-    reactionTime: 0.9,
+    acceleration: 2.4,
+    braking: 6.6,
+    reactionTime: 1,
     sideMargin: 0.2,
     steerSpeed: 0.18,
   },
