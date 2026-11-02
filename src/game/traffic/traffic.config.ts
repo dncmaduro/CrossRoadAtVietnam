@@ -6,9 +6,10 @@ export type MotorcycleStyle = 'scooter' | 'underbone' | 'sportScooter'
 export type CarStyle = 'compactEv' | 'sedan'
 export type VehicleStyle = MotorcycleStyle | CarStyle
 
-// Temporary visual QA switch. It affects motorcycle rendering only; the
-// original style/config values remain available for later variation work.
-export const FORCE_WAVE_MOTORCYCLE_VISUAL = true
+// Keep the original motorcycle style mapping active while the scooter asset is
+// validated. Underbone traffic remains Wave-like; automatic-bike styles use the
+// dedicated grey commuter scooter renderer.
+export const FORCE_WAVE_MOTORCYCLE_VISUAL = false
 
 export type VehicleConfig = {
   id: number
