@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef } from 'react'
-import { Box, Cylinder, Icosahedron, Line } from '@react-three/drei'
+import { useEffect, useLayoutEffect, useMemo, useRef } from 'react'
+import { Box, Cylinder, Icosahedron, Line, Sphere } from '@react-three/drei'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import type { LevelConfig } from '../levels/level.config'
@@ -55,6 +55,359 @@ function SignBoard({ label, color, position, width = 2.65 }: SignBoardProps) {
         <planeGeometry args={[width - 0.16, 0.48]} />
         <meshBasicMaterial map={texture} transparent toneMapped={false} />
       </mesh>
+    </group>
+  )
+}
+
+function HeroSign({ facadeZ, width }: { facadeZ: number; width: number }) {
+  const texture = useMemo(() => {
+    const canvas = document.createElement('canvas')
+    canvas.width = 1200
+    canvas.height = 300
+    const context = canvas.getContext('2d')
+    if (context) {
+      context.fillStyle = '#e7b93e'
+      context.fillRect(0, 0, canvas.width, canvas.height)
+      context.fillStyle = '#f4d86b'
+      context.fillRect(16, 16, canvas.width - 32, canvas.height - 32)
+      context.strokeStyle = '#a97824'
+      context.lineWidth = 12
+      context.strokeRect(10, 10, canvas.width - 20, canvas.height - 20)
+      context.textBaseline = 'middle'
+      context.textAlign = 'left'
+      context.font = '800 178px Arial, sans-serif'
+      context.fillStyle = '#c33150'
+      context.fillText('PHỞ', 56, 168)
+      context.font = '800 102px Arial, sans-serif'
+      context.fillStyle = '#163f9b'
+      context.fillText('BÚN BÒ', 492, 105)
+      context.font = '700 48px Arial, sans-serif'
+      context.fillStyle = '#287d78'
+      context.fillText('NƯỚC DÙNG NHÀ NẤU', 498, 171)
+      context.font = '700 37px Arial, sans-serif'
+      context.fillStyle = '#76502d'
+      context.fillText('QUÁN ĂN SÁNG • TRƯA', 498, 235)
+      context.fillStyle = '#c33150'
+      context.beginPath()
+      context.moveTo(445, 86)
+      context.lineTo(470, 105)
+      context.lineTo(445, 124)
+      context.closePath()
+      context.fill()
+    }
+    const nextTexture = new THREE.CanvasTexture(canvas)
+    nextTexture.colorSpace = THREE.SRGBColorSpace
+    return nextTexture
+  }, [])
+
+  useEffect(() => () => texture.dispose(), [texture])
+
+  return (
+    <group>
+      <Box args={[width + 0.3, 2.05, 0.22]} position={[0, 6.28, facadeZ - 0.04]} castShadow>
+        <meshStandardMaterial color="#d69f2d" roughness={0.7} />
+      </Box>
+      <Box args={[width + 0.36, 0.14, 0.3]} position={[0, 7.29, facadeZ - 0.04]}>
+        <meshStandardMaterial color="#7c5a32" roughness={0.78} metalness={0.1} />
+      </Box>
+      <Box args={[width + 0.36, 0.14, 0.3]} position={[0, 5.27, facadeZ - 0.04]}>
+        <meshStandardMaterial color="#7c5a32" roughness={0.78} metalness={0.1} />
+      </Box>
+      <Box args={[0.14, 2.05, 0.3]} position={[-width / 2, 6.28, facadeZ - 0.04]}>
+        <meshStandardMaterial color="#7c5a32" roughness={0.78} metalness={0.1} />
+      </Box>
+      <Box args={[0.14, 2.05, 0.3]} position={[width / 2, 6.28, facadeZ - 0.04]}>
+        <meshStandardMaterial color="#7c5a32" roughness={0.78} metalness={0.1} />
+      </Box>
+      <mesh position={[0, 6.28, facadeZ - 0.17]} rotation={[0, Math.PI, 0]}>
+        <planeGeometry args={[width - 0.22, 1.82]} />
+        <meshBasicMaterial map={texture} toneMapped={false} />
+      </mesh>
+    </group>
+  )
+}
+
+function MenuBoard({
+  position,
+  width = 2.1,
+  height = 1.25,
+  title = 'THỰC ĐƠN',
+  accent = '#ca5b43',
+}: {
+  position: [number, number, number]
+  width?: number
+  height?: number
+  title?: string
+  accent?: string
+}) {
+  const texture = useMemo(() => {
+    const canvas = document.createElement('canvas')
+    canvas.width = 520
+    canvas.height = 320
+    const context = canvas.getContext('2d')
+    if (context) {
+      context.fillStyle = '#f0d789'
+      context.fillRect(0, 0, canvas.width, canvas.height)
+      context.fillStyle = accent
+      context.fillRect(0, 0, canvas.width, 52)
+      context.textAlign = 'center'
+      context.textBaseline = 'middle'
+      context.font = '800 34px Arial, sans-serif'
+      context.fillStyle = '#fff8d7'
+      context.fillText(title, canvas.width / 2, 26)
+      context.textAlign = 'left'
+      context.font = '700 27px Arial, sans-serif'
+      context.fillStyle = '#30453d'
+      ;['PHỞ BÒ', 'BÚN BÒ', 'TRÀ ĐÁ', 'CƠM • MÌ'].forEach((line, index) => {
+        context.fillText(line, 28, 93 + index * 52)
+        context.textAlign = 'right'
+        context.fillText(index === 0 ? '45K' : index === 1 ? '50K' : index === 2 ? '5K' : '35K', canvas.width - 24, 93 + index * 52)
+        context.textAlign = 'left'
+      })
+    }
+    const nextTexture = new THREE.CanvasTexture(canvas)
+    nextTexture.colorSpace = THREE.SRGBColorSpace
+    return nextTexture
+  }, [accent, title])
+
+  useEffect(() => () => texture.dispose(), [texture])
+
+  return (
+    <group position={position}>
+      <Box args={[width, height, 0.12]} castShadow>
+        <meshStandardMaterial color="#6a4435" roughness={0.88} />
+      </Box>
+      <mesh position={[0, 0, -0.071]} rotation={[0, Math.PI, 0]}>
+        <planeGeometry args={[width - 0.12, height - 0.12]} />
+        <meshBasicMaterial map={texture} toneMapped={false} />
+      </mesh>
+    </group>
+  )
+}
+
+type BoxInstance = {
+  position: [number, number, number]
+  scale: [number, number, number]
+  rotation?: number
+}
+
+function InstancedBoxSet({
+  instances,
+  color,
+  castShadow = true,
+  receiveShadow = true,
+}: {
+  instances: BoxInstance[]
+  color: string
+  castShadow?: boolean
+  receiveShadow?: boolean
+}) {
+  const mesh = useRef<THREE.InstancedMesh>(null)
+
+  useLayoutEffect(() => {
+    if (!mesh.current) return
+    const matrix = new THREE.Matrix4()
+    const position = new THREE.Vector3()
+    const scale = new THREE.Vector3()
+    const quaternion = new THREE.Quaternion()
+    instances.forEach((instance, index) => {
+      position.set(...instance.position)
+      scale.set(...instance.scale)
+      quaternion.setFromEuler(new THREE.Euler(0, instance.rotation ?? 0, 0))
+      matrix.compose(position, quaternion, scale)
+      mesh.current?.setMatrixAt(index, matrix)
+    })
+    mesh.current.instanceMatrix.needsUpdate = true
+  }, [instances])
+
+  return (
+    <instancedMesh ref={mesh} args={[undefined, undefined, instances.length]} castShadow={castShadow} receiveShadow={receiveShadow}>
+      <boxGeometry args={[1, 1, 1]} />
+      <meshStandardMaterial color={color} roughness={0.88} />
+    </instancedMesh>
+  )
+}
+
+const heroTableLayouts = [
+  { x: -3.35, z: -1.55, rotation: -0.12 },
+  { x: -1.15, z: -1.68, rotation: 0.18 },
+  { x: 1.2, z: -1.58, rotation: -0.18 },
+  { x: 3.28, z: -1.42, rotation: 0.12 },
+  { x: -3.1, z: -0.05, rotation: 0.14 },
+  { x: -0.95, z: 0.02, rotation: -0.12 },
+  { x: 1.25, z: 0.08, rotation: 0.12 },
+  { x: 3.15, z: 0.18, rotation: -0.18 },
+  { x: -2.45, z: 1.38, rotation: -0.16 },
+  { x: 0.05, z: 1.42, rotation: 0.12 },
+  { x: 2.5, z: 1.35, rotation: -0.1 },
+]
+
+function HeroRestaurantFurniture() {
+  const furniture = useMemo(() => {
+    const tableTops: BoxInstance[] = []
+    const tableLegs: BoxInstance[] = []
+    const chairSeats: BoxInstance[] = []
+    const chairBacks: BoxInstance[] = []
+    heroTableLayouts.forEach(({ x, z, rotation }) => {
+      tableTops.push({ position: [x, 0.78, z], scale: [1.2, 0.12, 0.76], rotation })
+      ;[
+        [-0.43, -0.25],
+        [0.43, -0.25],
+        [-0.43, 0.25],
+        [0.43, 0.25],
+      ].forEach(([legX, legZ]) => {
+        const cos = Math.cos(rotation)
+        const sin = Math.sin(rotation)
+        tableLegs.push({
+          position: [x + legX * cos - legZ * sin, 0.39, z + legX * sin + legZ * cos],
+          scale: [0.08, 0.72, 0.08],
+          rotation,
+        })
+      })
+      ;[0, Math.PI / 2, Math.PI, (Math.PI * 3) / 2].forEach((angle) => {
+        const distanceX = Math.cos(angle) * 0.8
+        const distanceZ = Math.sin(angle) * 0.62
+        chairSeats.push({ position: [x + distanceX, 0.53, z + distanceZ], scale: [0.4, 0.08, 0.4], rotation: angle })
+        chairBacks.push({ position: [x + distanceX - Math.sin(angle) * 0.18, 0.88, z + distanceZ + Math.cos(angle) * 0.18], scale: [0.4, 0.58, 0.08], rotation: angle })
+      })
+    })
+    return { tableTops, tableLegs, chairSeats, chairBacks }
+  }, [])
+
+  return (
+    <>
+      <InstancedBoxSet instances={furniture.tableTops} color="#8d6249" />
+      <InstancedBoxSet instances={furniture.tableLegs} color="#53615e" />
+      <InstancedBoxSet instances={furniture.chairSeats} color="#b75c42" />
+      <InstancedBoxSet instances={furniture.chairBacks} color="#a94f3d" />
+      {heroTableLayouts.filter((_, index) => index % 2 === 0).map(({ x, z }) => (
+        <group key={`condiments-${x}-${z}`} position={[x, 0.91, z]}>
+          <Cylinder args={[0.065, 0.07, 0.14, 8]} position={[-0.14, 0, 0]}>
+            <meshStandardMaterial color="#d3483f" roughness={0.75} />
+          </Cylinder>
+          <Cylinder args={[0.06, 0.065, 0.14, 8]} position={[0.02, 0, 0]}>
+            <meshStandardMaterial color="#e2d6a3" roughness={0.78} />
+          </Cylinder>
+          <Box args={[0.22, 0.035, 0.14]} position={[0.17, 0, 0]}>
+            <meshStandardMaterial color="#4e7471" roughness={0.82} />
+          </Box>
+        </group>
+      ))}
+    </>
+  )
+}
+
+function CeilingFan({ position }: { position: [number, number, number] }) {
+  return (
+    <group position={position}>
+      <Cylinder args={[0.07, 0.07, 0.24, 8]} rotation={[Math.PI / 2, 0, 0]}>
+        <meshStandardMaterial color="#5d6863" roughness={0.82} metalness={0.16} />
+      </Cylinder>
+      {[0, Math.PI / 2, Math.PI, (Math.PI * 3) / 2].map((rotation) => (
+        <Box key={rotation} args={[0.72, 0.035, 0.1]} rotation={[0, rotation, 0]} position={[0, -0.12, 0]}>
+          <meshStandardMaterial color="#77847a" roughness={0.88} />
+        </Box>
+      ))}
+    </group>
+  )
+}
+
+function HeroPhoRestaurant({ x, z }: { x: number; z: number }) {
+  const width = 9.6
+  const depth = 4.9
+  const height = 7.45
+  const facadeZ = -depth / 2 - 0.04
+
+  return (
+    <group position={[x, 0, z]}>
+      <Box args={[width, 4.25, depth]} position={[0, 5.25, 0]} castShadow receiveShadow>
+        <meshStandardMaterial color="#d5c69a" roughness={0.9} />
+      </Box>
+      <Box args={[width + 0.22, 0.24, depth + 0.18]} position={[0, height, 0]} castShadow>
+        <meshStandardMaterial color="#47716c" roughness={0.82} />
+      </Box>
+      <Box args={[width + 0.38, 0.18, 0.7]} position={[0, 3.05, facadeZ - 0.2]} castShadow>
+        <meshStandardMaterial color="#4e5e58" roughness={0.8} metalness={0.08} />
+      </Box>
+      <Box args={[width + 0.26, 0.14, 0.48]} position={[0, 2.82, facadeZ - 0.13]}>
+        <meshStandardMaterial color="#bb7550" roughness={0.82} />
+      </Box>
+
+      <Box args={[0.34, 3.02, 0.36]} position={[-width / 2 + 0.22, 1.54, facadeZ]} castShadow>
+        <meshStandardMaterial color="#e0d0a3" roughness={0.88} />
+      </Box>
+      <Box args={[0.34, 3.02, 0.36]} position={[width / 2 - 0.22, 1.54, facadeZ]} castShadow>
+        <meshStandardMaterial color="#e0d0a3" roughness={0.88} />
+      </Box>
+      <Box args={[0.3, 2.72, depth - 0.2]} position={[-width / 2 + 0.18, 1.36, 0]}>
+        <meshStandardMaterial color="#b6aa82" roughness={0.92} />
+      </Box>
+      <Box args={[0.3, 2.72, depth - 0.2]} position={[width / 2 - 0.18, 1.36, 0]}>
+        <meshStandardMaterial color="#b6aa82" roughness={0.92} />
+      </Box>
+
+      <Box args={[width - 0.55, 0.12, depth - 0.38]} position={[0, 0.12, 0]} receiveShadow>
+        <meshStandardMaterial color="#d5d0b9" roughness={0.82} />
+      </Box>
+      {[-3.6, -1.8, 0, 1.8, 3.6].map((tileX) => (
+        <Box key={`floor-seam-x-${tileX}`} args={[0.025, 0.015, depth - 0.55]} position={[tileX, 0.19, 0]}>
+          <meshStandardMaterial color="#b9b7a6" roughness={0.92} />
+        </Box>
+      ))}
+      {[-1.45, 0, 1.45].map((tileZ) => (
+        <Box key={`floor-seam-z-${tileZ}`} args={[width - 0.9, 0.015, 0.025]} position={[0, 0.19, tileZ]}>
+          <meshStandardMaterial color="#b9b7a6" roughness={0.92} />
+        </Box>
+      ))}
+      <Box args={[width - 0.35, 0.08, 0.26]} position={[0, 0.22, facadeZ - 0.12]}>
+        <meshStandardMaterial color="#7a7767" roughness={0.9} />
+      </Box>
+      <Box args={[width - 0.65, 2.4, 0.18]} position={[0, 1.2, depth / 2 - 0.22]}>
+        <meshStandardMaterial color="#756d57" roughness={0.9} />
+      </Box>
+      <Box args={[width - 1.0, 0.64, 0.52]} position={[0, 0.52, depth / 2 - 0.56]}>
+        <meshStandardMaterial color="#5b625b" roughness={0.78} metalness={0.12} />
+      </Box>
+      <Cylinder args={[0.42, 0.48, 0.42, 10]} position={[-2.95, 0.75, depth / 2 - 0.65]}>
+        <meshStandardMaterial color="#a7a99a" roughness={0.72} metalness={0.16} />
+      </Cylinder>
+      <Cylinder args={[0.32, 0.36, 0.32, 10]} position={[-2.25, 0.72, depth / 2 - 0.64]}>
+        <meshStandardMaterial color="#c9b36e" roughness={0.76} />
+      </Cylinder>
+
+      <HeroSign facadeZ={facadeZ} width={width} />
+      <MenuBoard position={[-3.0, 1.85, depth / 2 - 0.34]} width={2.1} height={1.3} />
+      <MenuBoard position={[0.05, 2.0, depth / 2 - 0.34]} width={2.25} height={1.38} title="MÓN NGON" accent="#3c6d67" />
+      <MenuBoard position={[3.25, 1.6, facadeZ - 0.1]} width={1.5} height={1.65} title="GIÁ" accent="#ba5544" />
+
+      <HeroRestaurantFurniture />
+      {[-2.5, 0, 2.5].map((lightX) => (
+        <group key={`shop-light-${lightX}`} position={[lightX, 2.82, 0.45]}>
+          <Cylinder args={[0.025, 0.025, 0.42, 6]} position={[0, 0.22, 0]}>
+            <meshStandardMaterial color="#5c625d" roughness={0.8} />
+          </Cylinder>
+          <Sphere args={[0.11, 8, 6]} position={[0, -0.02, 0]}>
+            <meshStandardMaterial color="#f6e5aa" emissive="#c78a2a" emissiveIntensity={0.28} roughness={0.58} />
+          </Sphere>
+        </group>
+      ))}
+      <Box args={[1.35, 0.08, 0.18]} position={[-2.35, 2.8, -0.25]}>
+        <meshStandardMaterial color="#f2e6ae" emissive="#8f732e" emissiveIntensity={0.16} roughness={0.62} />
+      </Box>
+      <Box args={[1.35, 0.08, 0.18]} position={[2.35, 2.8, -0.25]}>
+        <meshStandardMaterial color="#f2e6ae" emissive="#8f732e" emissiveIntensity={0.16} roughness={0.62} />
+      </Box>
+      <CeilingFan position={[-2.45, 3.0, 1.05]} />
+      <CeilingFan position={[2.2, 3.0, 1.05]} />
+      <Box args={[0.55, 0.55, 0.48]} position={[-4.1, 0.35, facadeZ - 0.24]}>
+        <meshStandardMaterial color="#3f7377" roughness={0.76} metalness={0.12} />
+      </Box>
+      <Cylinder args={[0.25, 0.28, 0.32, 10]} position={[4.0, 0.18, facadeZ - 0.24]}>
+        <meshStandardMaterial color="#c2523e" roughness={0.88} />
+      </Cylinder>
+      <Cylinder args={[0.26, 0.26, 0.12, 10]} position={[4.0, 0.39, facadeZ - 0.24]}>
+        <meshStandardMaterial color="#e4d1a0" roughness={0.76} />
+      </Cylinder>
     </group>
   )
 }
@@ -241,8 +594,8 @@ type ShopHouseProps = {
 
 function ShopHouse({ x, z, bodyColor, roofColor, signColor, label, heightBias = 0, hasBalcony = false }: ShopHouseProps) {
   const variation = Math.abs(Math.round(x * 10)) % 4
-  const width = 3.85 + variation * 0.22
-  const depth = 3.45
+  const width = 4.35 + variation * 0.3 + (label.length > 9 ? 0.18 : 0)
+  const depth = 3.65 + (variation % 3) * 0.18
   const height = 5.4 + (variation % 3) * 0.48 + heightBias
   const facing = z > 0 ? 0 : Math.PI
   const facadeZ = -depth / 2 - 0.02
@@ -279,7 +632,7 @@ function ShopHouse({ x, z, bodyColor, roofColor, signColor, label, heightBias = 
         <meshStandardMaterial color="#9b604a" roughness={0.86} />
       </Box>
 
-      <SignBoard label={label} color={signColor} width={label.length > 9 ? 3.25 : 2.82} position={[-0.1, height - 0.78, facadeZ - 0.08]} />
+      <SignBoard label={label} color={signColor} width={Math.min(width - 0.3, label.length > 9 ? 4.3 : 3.75)} position={[-0.1, height - 0.78, facadeZ - 0.08]} />
       <ProjectingSign color={signColor} position={[width / 2 + 0.12, 2.75, facadeZ - 0.04]} />
       <StorefrontAwning color={signColor} facadeZ={facadeZ} width={width} />
       <ShopProps label={label} facadeZ={facadeZ} />
@@ -540,18 +893,18 @@ function SidewalkPedestrian({
 
 function DistantBackdrop({ backdropZ, roadLength }: { backdropZ: number; roadLength: number }) {
   const halfLength = roadLength / 2
-  const north = Array.from({ length: 9 }, (_, index) => -halfLength + 2.5 + index * ((roadLength - 5) / 8))
-  const south = Array.from({ length: 8 }, (_, index) => -halfLength + 3.5 + index * ((roadLength - 7) / 7))
+  const north = Array.from({ length: Math.ceil(roadLength / 6.2) }, (_, index) => -halfLength + 2.7 + index * ((roadLength - 5.4) / Math.max(1, Math.ceil(roadLength / 6.2) - 1)))
+  const south = Array.from({ length: Math.ceil(roadLength / 6.8) }, (_, index) => -halfLength + 3.4 + index * ((roadLength - 6.8) / Math.max(1, Math.ceil(roadLength / 6.8) - 1)))
   return (
     <group>
       {north.map((x, index) => (
-        <Box key={`north-backdrop-${x}`} args={[5.4, 5.5 + (index % 3), 2]} position={[x, 2.75 + (index % 3) * 0.5, backdropZ]}>
+        <Box key={`north-backdrop-${x}`} args={[4.8 + (index % 4) * 0.7, 5.2 + (index % 3), 2]} position={[x, 2.6 + (index % 3) * 0.5, backdropZ]}>
           <meshStandardMaterial color={['#9ca9a4', '#a9b2aa', '#8e9e9a'][index % 3]} roughness={1} />
         </Box>
       ))}
       {south.map((x, index) => (
-        <Box key={`south-backdrop-${x}`} args={[6.3, 4.5 + (index % 2), 2]} position={[x, 2.25 + (index % 2) * 0.4, -backdropZ]}>
-          <meshStandardMaterial color="#a5aaa0" roughness={1} />
+        <Box key={`south-backdrop-${x}`} args={[5.2 + (index % 3) * 0.8, 4.4 + (index % 2), 2]} position={[x, 2.2 + (index % 2) * 0.4, -backdropZ]}>
+          <meshStandardMaterial color={['#a5aaa0', '#9ba9a4', '#adb0a1'][index % 3]} roughness={1} />
         </Box>
       ))}
     </group>
@@ -568,12 +921,16 @@ export function Environment({ level }: { level: LevelConfig }) {
   const shopZ = level.roadHalfWidth + level.sidewalkWidth + 1.7
   const streetZ = level.roadHalfWidth + level.sidewalkWidth - 0.7
   const scooterZ = level.roadHalfWidth + level.sidewalkWidth + 0.1
-  const shopXs = Array.from({ length: 11 }, (_, index) => (-0.46 + index * 0.092) * level.roadLength)
+  const frontageCount = Math.max(13, Math.ceil(level.roadLength / 6.4))
+  const frontageInset = Math.min(4.2, level.roadLength * 0.08)
+  const shopXs = Array.from({ length: frontageCount }, (_, index) => (
+    -level.roadLength / 2 + frontageInset + index * ((level.roadLength - frontageInset * 2) / Math.max(1, frontageCount - 1))
+  ))
   const heightBias = level.environmentPreset === 'smallStreet' ? -0.35 : level.environmentPreset === 'arterial' ? 0.45 : 0.35
   const extraScooters = level.environmentPreset === 'smallStreet' || level.environmentPreset === 'motorcycle'
-  const northLabels = ['TẠP HÓA', 'PHỞ BÒ', 'SỬA XE MÁY', 'CÀ PHÊ', 'CƠM BÌNH DÂN', 'CẮT TÓC', 'BÚN CHẢ', 'TRÀ ĐÁ', 'BÁNH MÌ', 'CƠM GÀ', 'CÀ PHÊ']
-  const southLabels = ['BÚN CHẢ', 'TRÀ ĐÁ', 'RỬA XE', 'PHỞ GÀ', 'BÁNH MÌ', 'CÀ PHÊ', 'PHỞ BÒ', 'TẠP HÓA', 'CƠM BÌNH DÂN', 'CẮT TÓC', 'SỬA XE MÁY']
-  const poleXs = [-0.44, -0.22, 0, 0.22, 0.44].map((ratio) => ratio * level.roadLength)
+  const northLabels = ['TẠP HÓA', 'PHỞ BÒ', 'SỬA XE MÁY', 'CÀ PHÊ', 'CƠM BÌNH DÂN', 'CẮT TÓC', 'BÚN CHẢ', 'TRÀ ĐÁ', 'BÁNH MÌ', 'CƠM GÀ', 'TẠP HÓA', 'NƯỚC MÍA', 'BÚN BÒ', 'CÀ PHÊ']
+  const southLabels = ['BÚN CHẢ', 'TRÀ ĐÁ', 'RỬA XE', 'PHỞ GÀ', 'BÁNH MÌ', 'CÀ PHÊ', 'PHỞ BÒ', 'TẠP HÓA', 'CƠM BÌNH DÂN', 'CẮT TÓC', 'SỬA XE MÁY', 'CƠM GÀ', 'TRÀ ĐÁ', 'TẠP HÓA']
+  const poleXs = Array.from({ length: 7 }, (_, index) => -level.roadLength / 2 + 5 + index * ((level.roadLength - 10) / 6))
   const cableProfiles = [
     { baseY: 6.65, sag: 0.24, zOffset: 0.16, color: '#3e4d4b', lineWidth: 1 },
     { baseY: 6.35, sag: 0.2, zOffset: 0.25, color: '#5a6560', lineWidth: 0.8 },
@@ -588,16 +945,18 @@ export function Environment({ level }: { level: LevelConfig }) {
         const southPalette = shopPalette[(index + 2) % shopPalette.length]
         return (
           <group key={`shops-${x}`}>
-            <ShopHouse
-              x={x}
-              z={shopZ}
-              bodyColor={palette[0]}
-              roofColor={palette[1]}
-              signColor={palette[2]}
-              label={northLabels[index]}
-              heightBias={heightBias}
-              hasBalcony={index === 0 || index === 3}
-            />
+            {Math.abs(x) > 5.55 && (
+              <ShopHouse
+                x={x}
+                z={shopZ}
+                bodyColor={palette[0]}
+                roofColor={palette[1]}
+                signColor={palette[2]}
+                label={northLabels[index % northLabels.length]}
+                heightBias={heightBias + (index % 3 === 0 ? 0.24 : 0)}
+                hasBalcony={index % 5 === 0 || index % 5 === 3}
+              />
+            )}
             {index !== 2 && index !== 5 && (
               <ShopHouse
                 x={x + 0.35}
@@ -605,14 +964,15 @@ export function Environment({ level }: { level: LevelConfig }) {
                 bodyColor={southPalette[0]}
                 roofColor={southPalette[1]}
                 signColor={southPalette[2]}
-                label={southLabels[index]}
-                heightBias={index === 1 ? -0.45 : heightBias * 0.5}
-                hasBalcony={index === 1 || index === 4}
+                label={southLabels[index % southLabels.length]}
+                heightBias={index === 1 ? -0.45 : heightBias * 0.5 + (index % 4 === 2 ? 0.3 : 0)}
+                hasBalcony={index % 4 === 1 || index % 4 === 0}
               />
             )}
           </group>
         )
       })}
+      <HeroPhoRestaurant x={0} z={shopZ} />
 
       {poleXs.map((x, index) => (
         <group key={`poles-${x}`}>
@@ -640,11 +1000,12 @@ export function Environment({ level }: { level: LevelConfig }) {
       ))}
 
       {[
-        [-0.4 * level.roadLength, streetZ - 0.4, 1.08, '#5d8760'],
-        [-0.2 * level.roadLength, -streetZ - 0.5, 0.86, '#4e7857'],
-        [0.02 * level.roadLength, streetZ - 0.34, 1.18, '#6c8d5f'],
-        [0.24 * level.roadLength, -streetZ - 0.42, 0.94, '#557d5b'],
-        [0.41 * level.roadLength, streetZ - 0.36, 1.04, '#668961'],
+        [-0.44 * level.roadLength, streetZ - 0.4, 1.08, '#5d8760'],
+        [-0.3 * level.roadLength, -streetZ - 0.5, 0.86, '#4e7857'],
+        [-0.12 * level.roadLength, streetZ - 0.34, 1.18, '#6c8d5f'],
+        [0.08 * level.roadLength, -streetZ - 0.42, 0.94, '#557d5b'],
+        [0.25 * level.roadLength, streetZ - 0.36, 1.04, '#668961'],
+        [0.41 * level.roadLength, -streetZ - 0.34, 0.9, '#4e7857'],
       ].map(([x, z, scale, canopyColor], index) => (
         <group key={`street-${x}`}>
           <StreetTree x={x as number} z={z as number} scale={scale as number} canopyColor={canopyColor as string} />
